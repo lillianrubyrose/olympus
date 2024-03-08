@@ -9,3 +9,4 @@ workspace = true
 
 [dependencies]
 ariadne.workspace = true
+unicode-segmentation.workspace = true

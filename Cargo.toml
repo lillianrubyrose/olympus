@@ -16,4 +16,5 @@ too_many_lines = "allow"
 range_plus_one = "allow"
 
 [workspace.dependencies]
-ariadne = "0.4.0"
+ariadne = "0.4"
+unicode-segmentation = "1.11"

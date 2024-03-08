@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use crate::cursor::{CodeCursor, CodeCursorPoint, SpanExt};
+use unicode_segmentation::UnicodeSegmentation;
 
 #[derive(Debug)]
 pub enum AsciiToken {
@@ -93,144 +93,211 @@ impl<T, S> Spanned<T, S> {
     }
 }
 
+pub type SpannedToken = Spanned<Token>;
 pub type SpannedErr = Spanned<String>;
 
-pub struct Lexer {
-    cursor: CodeCursor,
-    pub tokens: Vec<Token>,
+#[derive(Debug, Clone, Copy)]
+pub struct LexPoint {
+    pub line: usize,
+    pub segment_idx: usize,
+    pub file_idx: usize,
 }
 
-impl Lexer {
+pub struct Lexer<'lex> {
+    pub src: &'lex str,
+    pub graphemes: Vec<&'lex str>,
+    pub curr_point: LexPoint,
+    pub tokens: Vec<SpannedToken>,
+}
+
+impl<'lex> Lexer<'lex> {
     #[must_use]
-    pub fn new(src: &str) -> Self {
+    pub fn new(src: &'lex str) -> Self {
         Self {
-            cursor: CodeCursor::new(src),
+            src,
+            graphemes: src.graphemes(true).collect(),
+            curr_point: LexPoint {
+                line: 1,
+                segment_idx: 0,
+                file_idx: 0,
+            },
             tokens: Vec::new(),
         }
     }
 
-    fn ident_char(c: char) -> bool {
-        c.is_alphabetic() || c == '_'
+    pub fn move_point(&mut self, value: &'lex str) {
+        for ele in value.chars() {
+            if ele == '\n' {
+                self.curr_point.line += 1;
+            }
+        }
+
+        self.curr_point.segment_idx += 1;
+        self.curr_point.file_idx += value.len();
     }
 
-    // why isn't this being automatically picked up from the workspace lints!
-    #[allow(clippy::too_many_lines)]
-    pub fn lex(&mut self) -> Result<(), SpannedErr> {
-        while !self.cursor.is_eof() {
-            self.cursor.skip_whitespace();
+    #[must_use]
+    pub fn is_eof(&self) -> bool {
+        self.curr_point.segment_idx >= self.graphemes.len()
+    }
 
-            let Some(point) = self.cursor.pop() else {
+    #[must_use]
+    pub fn peek(&self) -> Option<&'lex str> {
+        self.graphemes.get(self.curr_point.segment_idx).copied()
+    }
+
+    pub fn pop(&mut self) -> Option<&'lex str> {
+        let popped = self.graphemes.get(self.curr_point.segment_idx).copied()?;
+        self.move_point(popped);
+        Some(popped)
+    }
+
+    pub fn pop_if(&mut self, predicate: impl Fn(&str) -> bool) -> Option<&'lex str> {
+        let popped = self.graphemes.get(self.curr_point.segment_idx).copied()?;
+        if !predicate(popped) {
+            return None;
+        }
+        self.move_point(popped);
+        Some(popped)
+    }
+
+    pub fn pop_if_all(&mut self, predicate: impl Fn(char) -> bool) -> Option<&'lex str> {
+        let popped = self.graphemes.get(self.curr_point.segment_idx).copied()?;
+        for ele in popped.chars() {
+            if !predicate(ele) {
+                return None;
+            }
+        }
+        self.move_point(popped);
+        Some(popped)
+    }
+
+    #[must_use]
+    pub fn get_span(&self, start: &LexPoint) -> Range<usize> {
+        start.file_idx..self.curr_point.file_idx
+    }
+
+    pub fn add<T: Into<Token>>(&mut self, token: T, start: &LexPoint) {
+        self.tokens
+            .push(SpannedToken::new(token.into(), self.get_span(start)));
+    }
+
+    pub fn skip_whitespace(&mut self) {
+        while self
+            .pop_if(|v| v.chars().all(|c| c.is_ascii_whitespace()))
+            .is_some()
+        {}
+    }
+
+    #[must_use]
+    pub fn ident_char(v: char) -> bool {
+        v.is_ascii_alphabetic() || v == '_'
+    }
+
+    pub fn lex(&mut self) -> Result<(), SpannedErr> {
+        while !self.is_eof() {
+            self.skip_whitespace();
+
+            let start = self.curr_point;
+
+            let Some(c) = self.pop() else {
                 break;
             };
 
-            match point.value {
-                '#' => {
+            match c {
+                "#" => {
                     let mut comment = String::new();
-                    for c in self.cursor.pop_while(|c| c != '\n') {
-                        comment.push(c.value);
+                    while let Some(v) = self.pop_if(|c| !c.ends_with('\n')) {
+                        comment.push_str(v);
                     }
 
                     if comment.starts_with(' ') {
                         comment.remove(0);
                     }
 
-                    self.add(Token::Comment(comment));
+                    self.add(Token::Comment(comment), &start);
                 }
-                '{' => self.add(AsciiToken::OpenBrace),
-                '}' => self.add(AsciiToken::CloseBrace),
-                '(' => self.add(AsciiToken::OpenParen),
-                ')' => self.add(AsciiToken::CloseParen),
-                '[' => self.add(AsciiToken::OpenBracket),
-                ']' => self.add(AsciiToken::CloseBracket),
-                '-' if self.cursor.pop_if('>').is_some() => self.add(Token::Arrow),
-                ';' => self.add(AsciiToken::SemiColon),
-                '@' if matches!(self.cursor.peek_chr(), Some(v) if Self::ident_char(v)) => {
-                    let points = self
-                        .cursor
-                        .pop_while(Self::ident_char)
-                        .into_iter()
-                        .collect::<Vec<CodeCursorPoint>>();
-                    let ident = points.iter().map(|p| p.value).collect::<String>();
+                "{" => self.add(AsciiToken::OpenBrace, &start),
+                "}" => self.add(AsciiToken::CloseBrace, &start),
+                "(" => self.add(AsciiToken::OpenParen, &start),
+                ")" => self.add(AsciiToken::CloseParen, &start),
+                "[" => self.add(AsciiToken::OpenBracket, &start),
+                "]" => self.add(AsciiToken::CloseBracket, &start),
+                ";" => self.add(AsciiToken::SemiColon, &start),
+                "-" if self.pop_if(|v| v == ">").is_some() => self.add(Token::Arrow, &start),
+                "@" if matches!(self.peek(), Some(v) if v.chars().all(Self::ident_char)) => {
+                    let mut ident = String::new();
+                    while let Some(v) = self.pop_if_all(Self::ident_char) {
+                        ident.push_str(v);
+                    }
 
                     match ident.as_str() {
-                        "int8" => self.add(IntToken::Int8),
-                        "uint8" => self.add(IntToken::UInt8),
-                        "int16" => self.add(IntToken::Int16),
-                        "uint16" => self.add(IntToken::UInt16),
-                        "int32" => self.add(IntToken::Int32),
-                        "uint32" => self.add(IntToken::UInt32),
-                        "int64" => self.add(IntToken::Int64),
-                        "uint64" => self.add(IntToken::UInt64),
+                        "int8" => self.add(IntToken::Int8, &start),
+                        "uint8" => self.add(IntToken::UInt8, &start),
+                        "int16" => self.add(IntToken::Int16, &start),
+                        "uint16" => self.add(IntToken::UInt16, &start),
+                        "int32" => self.add(IntToken::Int32, &start),
+                        "uint32" => self.add(IntToken::UInt32, &start),
+                        "int64" => self.add(IntToken::Int64, &start),
+                        "uint64" => self.add(IntToken::UInt64, &start),
 
-                        "varint8" => self.add(TypeToken::VariableInt(IntToken::Int8)),
-                        "varuint8" => self.add(TypeToken::VariableInt(IntToken::UInt8)),
-                        "varint16" => self.add(TypeToken::VariableInt(IntToken::Int16)),
-                        "varuint16" => self.add(TypeToken::VariableInt(IntToken::UInt16)),
-                        "varint32" => self.add(TypeToken::VariableInt(IntToken::Int32)),
-                        "varuint32" => self.add(TypeToken::VariableInt(IntToken::UInt32)),
-                        "varint64" => self.add(TypeToken::VariableInt(IntToken::Int64)),
-                        "varuint64" => self.add(TypeToken::VariableInt(IntToken::UInt64)),
+                        "varint8" => self.add(TypeToken::VariableInt(IntToken::Int8), &start),
+                        "varuint8" => self.add(TypeToken::VariableInt(IntToken::UInt8), &start),
+                        "varint16" => self.add(TypeToken::VariableInt(IntToken::Int16), &start),
+                        "varuint16" => self.add(TypeToken::VariableInt(IntToken::UInt16), &start),
+                        "varint32" => self.add(TypeToken::VariableInt(IntToken::Int32), &start),
+                        "varuint32" => self.add(TypeToken::VariableInt(IntToken::UInt32), &start),
+                        "varint64" => self.add(TypeToken::VariableInt(IntToken::Int64), &start),
+                        "varuint64" => self.add(TypeToken::VariableInt(IntToken::UInt64), &start),
 
-                        "string" => self.add(TypeToken::String),
-                        "Generator" => self.add(TypeToken::Generator),
+                        "string" => self.add(TypeToken::String, &start),
+                        "Generator" => self.add(TypeToken::Generator, &start),
 
                         _ => {
                             return Err(SpannedErr::new(
                                 "Unrecognized builtin".to_string(),
-                                points.file_span(),
+                                self.get_span(&start),
                             ))
                         }
                     }
                 }
-                '@' => {
-                    return Err(SpannedErr::new(
-                        "Expected builtin after '@'".into(),
-                        point.file_span(),
-                    ));
-                }
-                c if Self::ident_char(c) => {
-                    let ident = std::iter::once(c)
-                        .chain(
-                            self.cursor
-                                .pop_while(Self::ident_char)
-                                .into_iter()
-                                .map(|p| p.value),
-                        )
-                        .collect::<String>();
+                c if c.chars().all(Self::ident_char) => {
+                    let mut ident = c.to_string();
+                    while let Some(v) = self.pop_if_all(Self::ident_char) {
+                        ident.push_str(v);
+                    }
 
                     match ident.as_str() {
-                        "data" => self.add(KeywordToken::Data),
-                        "server" => self.add(KeywordToken::Server),
-                        "proc" => self.add(KeywordToken::Proc),
-                        "enum" => self.add(KeywordToken::Enum),
+                        "data" => self.add(KeywordToken::Data, &start),
+                        "server" => self.add(KeywordToken::Server, &start),
+                        "proc" => self.add(KeywordToken::Proc, &start),
+                        "enum" => self.add(KeywordToken::Enum, &start),
 
-                        ident => self.add(Token::Ident(ident.to_string())),
+                        ident => self.add(Token::Ident(ident.to_string()), &start),
                     }
                 }
-                c if c.is_ascii_digit() => {
-                    let points = std::iter::once(point)
-                        .chain(self.cursor.pop_while(|c| c.is_ascii_digit()).into_iter())
-                        .collect::<Vec<CodeCursorPoint>>();
-                    let number = points.iter().map(|p| p.value).collect::<String>();
-                    let num = number.parse().map_err(|_| {
-                        SpannedErr::new(format!("Max enum tag is {}", i16::MAX), points.file_span())
-                    })?;
+                c if c.chars().all(char::is_numeric) => {
+                    let mut number = c.to_string();
+                    while let Some(v) = self.pop_if_all(char::is_numeric) {
+                        number.push_str(v);
+                    }
 
-                    self.add(Token::Number(num));
+                    let number = number.parse::<i16>().map_err(|_| {
+                        SpannedErr::new(
+                            format!("Max enum tag is {}", i16::MAX),
+                            self.get_span(&start),
+                        )
+                    })?;
+                    self.add(Token::Number(number), &start);
                 }
-                c => {
+                _ => {
                     return Err(SpannedErr::new(
                         format!("Unexpected character: {c}"),
-                        point.file_span(),
+                        self.get_span(&start),
                     ))
                 }
             }
         }
-
         Ok(())
-    }
-
-    fn add<T: Into<Token>>(&mut self, token: T) {
-        self.tokens.push(token.into());
     }
 }

@@ -1,9 +1,9 @@
 # awagagaa
 
 enum AfterGrabAction {
-    DELETE->1;
-    SECURE_DELETE->2;
-    ENCRYPT->3;
+    DELETE->123;
+    SECURE_DELETE->456;
+    ENCRYPT->789;
 }
 
 data File {
