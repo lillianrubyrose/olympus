@@ -1,7 +1,11 @@
-[package]
-name = "olympus"
-version = "0.1.0"
-edition = "2021"
+[workspace]
+members = ["src/*"]
+resolver = "2"
 
-[dependencies]
+[workspace.package]
+edition = "2021"
+version = "0.0.0"
+publish = false
+
+[workspace.dependencies]
 ariadne = "0.4.0"

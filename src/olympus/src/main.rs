@@ -3,7 +3,7 @@ use olympus::lexer::Lexer;
 
 fn main() {
     let filename = "example.olympus";
-    let src = include_str!("../example.olympus");
+    let src = include_str!("example.olympus");
     let mut lexer = Lexer::new(src);
     if let Err(err) = lexer.lex() {
         Report::build(ariadne::ReportKind::Error, filename, err.span.start)
