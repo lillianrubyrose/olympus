@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 #[derive(Debug, Clone)]
 pub struct CodeCursorPoint {
     pub value: char,
@@ -10,6 +12,24 @@ pub struct CodeCursorPoint {
 pub struct CodeCursor {
     inner: Vec<CodeCursorPoint>,
     read_idx: usize,
+}
+
+pub trait SpanExt {
+    fn file_span(&self) -> Range<usize>;
+}
+
+impl SpanExt for Vec<CodeCursorPoint> {
+    #[allow(clippy::range_plus_one)]
+    fn file_span(&self) -> Range<usize> {
+        self[0].file_idx..self[self.len() - 1].file_idx + 1
+    }
+}
+
+impl SpanExt for CodeCursorPoint {
+    #[allow(clippy::range_plus_one)]
+    fn file_span(&self) -> Range<usize> {
+        self.file_idx..self.file_idx + 1
+    }
 }
 
 impl CodeCursor {
@@ -45,22 +65,27 @@ impl CodeCursor {
         }
     }
 
+    #[must_use]
     pub fn is_eof(&self) -> bool {
         self.read_idx >= self.inner.len()
     }
 
+    #[must_use]
     pub fn peek(&self) -> Option<&CodeCursorPoint> {
         self.inner.get(self.read_idx)
     }
 
+    #[must_use]
     pub fn peek_n(&self, offset: usize) -> Option<&CodeCursorPoint> {
         self.inner.get(self.read_idx + offset)
     }
 
+    #[must_use]
     pub fn peek_chr(&self) -> Option<char> {
         self.peek().map(|v| v.value)
     }
 
+    #[must_use]
     pub fn peek_chr_n(&self, offset: usize) -> Option<char> {
         self.peek_n(offset).map(|v| v.value)
     }
@@ -148,7 +173,7 @@ impl CodeCursor {
     }
 
     pub fn skip_whitespace(&mut self) {
-        self.skip_while(char::is_whitespace)
+        self.skip_while(char::is_whitespace);
     }
 }
 

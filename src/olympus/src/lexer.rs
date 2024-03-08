@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use crate::cursor::{CodeCursor, CodeCursorPoint};
+use crate::cursor::{CodeCursor, CodeCursorPoint, SpanExt};
 
 #[derive(Debug)]
 pub enum AsciiToken {
@@ -86,13 +86,14 @@ pub struct Spanned<T, S = Range<usize>> {
     pub span: S,
 }
 
-pub type SpannedErr = Spanned<String>;
-
-impl SpannedErr {
-    pub fn new(span: Range<usize>, err: String) -> Self {
-        Self { value: err, span }
+impl<T, S> Spanned<T, S> {
+    #[must_use]
+    pub fn new(value: T, span: S) -> Self {
+        Self { value, span }
     }
 }
+
+pub type SpannedErr = Spanned<String>;
 
 pub struct Lexer {
     cursor: CodeCursor,
@@ -100,6 +101,7 @@ pub struct Lexer {
 }
 
 impl Lexer {
+    #[must_use]
     pub fn new(src: &str) -> Self {
         Self {
             cursor: CodeCursor::new(src),
@@ -111,6 +113,8 @@ impl Lexer {
         c.is_alphabetic() || c == '_'
     }
 
+    // why isn't this being automatically picked up from the workspace lints!
+    #[allow(clippy::too_many_lines)]
     pub fn lex(&mut self) -> Result<(), SpannedErr> {
         while !self.cursor.is_eof() {
             self.cursor.skip_whitespace();
@@ -130,7 +134,7 @@ impl Lexer {
                         comment.remove(0);
                     }
 
-                    self.add(Token::Comment(comment))
+                    self.add(Token::Comment(comment));
                 }
                 '{' => self.add(AsciiToken::OpenBrace),
                 '}' => self.add(AsciiToken::CloseBrace),
@@ -146,7 +150,6 @@ impl Lexer {
                         .pop_while(Self::ident_char)
                         .into_iter()
                         .collect::<Vec<CodeCursorPoint>>();
-                    let points_span = points[0].file_idx..points[points.len() - 1].file_idx + 1;
                     let ident = points.iter().map(|p| p.value).collect::<String>();
 
                     match ident.as_str() {
@@ -173,16 +176,16 @@ impl Lexer {
 
                         _ => {
                             return Err(SpannedErr::new(
-                                points_span,
                                 "Unrecognized builtin".to_string(),
+                                points.file_span(),
                             ))
                         }
                     }
                 }
                 '@' => {
                     return Err(SpannedErr::new(
-                        point.file_idx..point.file_idx,
                         "Expected builtin after '@'".into(),
+                        point.file_span(),
                     ));
                 }
                 c if Self::ident_char(c) => {
@@ -208,18 +211,17 @@ impl Lexer {
                     let points = std::iter::once(point)
                         .chain(self.cursor.pop_while(|c| c.is_ascii_digit()).into_iter())
                         .collect::<Vec<CodeCursorPoint>>();
-                    let points_span = points[0].file_idx..points[points.len() - 1].file_idx + 1;
                     let number = points.iter().map(|p| p.value).collect::<String>();
                     let num = number.parse().map_err(|_| {
-                        SpannedErr::new(points_span, format!("Max enum tag is {}", i16::MAX))
+                        SpannedErr::new(format!("Max enum tag is {}", i16::MAX), points.file_span())
                     })?;
 
                     self.add(Token::Number(num));
                 }
                 c => {
                     return Err(SpannedErr::new(
-                        point.file_idx..point.file_idx,
                         format!("Unexpected character: {c}"),
+                        point.file_span(),
                     ))
                 }
             }
