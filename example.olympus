@@ -1,0 +1,15 @@
+# awagagaa
+
+enum AfterGrabAction {
+    DELETE->1;
+    SECURE_DELETE->2;
+    ENCRYPT->3;
+}
+
+data File {
+    path->@string;
+}
+
+server {
+    proc getFiles() -> @Generator[File];
+}
