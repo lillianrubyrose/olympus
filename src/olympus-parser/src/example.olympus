@@ -1,0 +1,14 @@
+enum Action {
+    DELETE->123;
+    SECURE_DELETE->456;
+    ENCRYPT->789;
+}
+
+data File {
+    path->@string;
+}
+
+server {
+    proc getFiles() -> @string;
+    proc meow(action->Action, version->@int8) -> @int8;
+}

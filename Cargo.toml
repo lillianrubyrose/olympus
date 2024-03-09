@@ -16,5 +16,8 @@ too_many_lines = "allow"
 range_plus_one = "allow"
 
 [workspace.dependencies]
+olympus-lexer = { path = "src/olympus-lexer" }
+olympus-parser = { path = "src/olympus-parser" }
+
 ariadne = "0.4"
 unicode-segmentation = "1.11"

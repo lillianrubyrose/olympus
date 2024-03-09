@@ -1,0 +1,13 @@
+[package]
+name = "olympus-parser"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+
+[dependencies]
+olympus-lexer.workspace = true
+ariadne.workspace = true
+paste = "1.0.14"
+
+[lints]
+workspace = true

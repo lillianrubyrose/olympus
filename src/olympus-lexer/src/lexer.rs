@@ -2,7 +2,7 @@ use std::ops::Range;
 
 use unicode_segmentation::UnicodeSegmentation;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum AsciiToken {
     OpenBrace,
     CloseBrace,
@@ -20,7 +20,7 @@ impl From<AsciiToken> for Token {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum KeywordToken {
     Proc,
     Data,
@@ -34,7 +34,7 @@ impl From<KeywordToken> for Token {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum IntToken {
     Int8,
     Int16,
@@ -52,7 +52,7 @@ impl From<IntToken> for Token {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum TypeToken {
     Int(IntToken),
     VariableInt(IntToken),
@@ -66,7 +66,7 @@ impl From<TypeToken> for Token {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Token {
     Comment(String),
     Ident(String),
@@ -81,6 +81,7 @@ pub enum Token {
     Number(i16),
 }
 
+#[derive(Debug, Clone)]
 pub struct Spanned<T, S = Range<usize>> {
     pub value: T,
     pub span: S,
@@ -190,8 +191,27 @@ impl<'lex> Lexer<'lex> {
     }
 
     #[must_use]
-    pub fn ident_char(v: char) -> bool {
+    pub fn is_ident_chr_first(v: char) -> bool {
         v.is_ascii_alphabetic() || v == '_'
+    }
+
+    #[must_use]
+    pub fn is_ident_chr_rest(v: char) -> bool {
+        v.is_ascii_alphanumeric() || v == '_'
+    }
+
+    pub fn pop_ident(&mut self, start: Option<&'lex str>) -> Option<String> {
+        let mut ident = String::new();
+        if let Some(start) = start {
+            ident.push_str(start);
+        } else {
+            ident.push_str(self.pop()?);
+        }
+        while let Some(v) = self.pop_if_all(Self::is_ident_chr_rest) {
+            ident.push_str(v);
+        }
+
+        Some(ident)
     }
 
     pub fn lex(&mut self) -> Result<(), SpannedErr> {
@@ -224,12 +244,13 @@ impl<'lex> Lexer<'lex> {
                 "[" => self.add(AsciiToken::OpenBracket, &start),
                 "]" => self.add(AsciiToken::CloseBracket, &start),
                 ";" => self.add(AsciiToken::SemiColon, &start),
+                "," => self.add(AsciiToken::Comma, &start),
                 "-" if self.pop_if(|v| v == ">").is_some() => self.add(Token::Arrow, &start),
-                "@" if matches!(self.peek(), Some(v) if v.chars().all(Self::ident_char)) => {
-                    let mut ident = String::new();
-                    while let Some(v) = self.pop_if_all(Self::ident_char) {
-                        ident.push_str(v);
-                    }
+                "@" if matches!(self.peek(), Some(v) if v.chars().all(Self::is_ident_chr_first)) => {
+                    let ident = self.pop_ident(None).ok_or(SpannedErr::new(
+                        "Couldn't pop ident after finding it, this shouldn't ever happen.".into(),
+                        self.get_span(&start),
+                    ))?;
 
                     match ident.as_str() {
                         "int8" => self.add(IntToken::Int8, &start),
@@ -261,11 +282,11 @@ impl<'lex> Lexer<'lex> {
                         }
                     }
                 }
-                c if c.chars().all(Self::ident_char) => {
-                    let mut ident = c.to_string();
-                    while let Some(v) = self.pop_if_all(Self::ident_char) {
-                        ident.push_str(v);
-                    }
+                c if c.chars().all(Self::is_ident_chr_first) => {
+                    let ident = self.pop_ident(Some(c)).ok_or(SpannedErr::new(
+                        "Couldn't pop ident after finding it, this shouldn't ever happen.".into(),
+                        self.get_span(&start),
+                    ))?;
 
                     match ident.as_str() {
                         "data" => self.add(KeywordToken::Data, &start),

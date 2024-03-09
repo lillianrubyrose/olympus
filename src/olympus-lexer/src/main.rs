@@ -1,5 +1,5 @@
 use ariadne::{sources, Color, Label, Report};
-use olympus::lexer::{Lexer, Token};
+use olympus_lexer::lexer::{Lexer, Token};
 
 fn main() {
     let filename = "example.olympus";
@@ -19,5 +19,12 @@ fn main() {
         return;
     }
 
-    println!("{:?}", lexer.tokens.into_iter().map(|v| v.value).collect::<Vec<Token>>());
+    println!(
+        "{:?}",
+        lexer
+            .tokens
+            .into_iter()
+            .map(|v| v.value)
+            .collect::<Vec<Token>>()
+    );
 }
