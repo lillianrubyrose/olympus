@@ -4,11 +4,11 @@ enum Action {
     ENCRYPT->789;
 }
 
-data File {
+struct File {
     path->@string;
 }
 
-server {
+rpc {
     proc getFiles() -> @string;
     proc meow(action->Action, version->@int8) -> @int8;
 }

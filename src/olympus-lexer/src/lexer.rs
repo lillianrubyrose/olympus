@@ -22,10 +22,10 @@ impl From<AsciiToken> for Token {
 
 #[derive(Debug, Clone)]
 pub enum KeywordToken {
-	Proc,
-	Data,
-	Server,
 	Enum,
+	Struct,
+	Rpc,
+	Proc,
 }
 
 impl From<KeywordToken> for Token {
@@ -285,8 +285,8 @@ impl<'lex> Lexer<'lex> {
 					))?;
 
 					match ident.as_str() {
-						"data" => self.add(KeywordToken::Data, &start),
-						"server" => self.add(KeywordToken::Server, &start),
+						"struct" => self.add(KeywordToken::Struct, &start),
+						"rpc" => self.add(KeywordToken::Rpc, &start),
 						"proc" => self.add(KeywordToken::Proc, &start),
 						"enum" => self.add(KeywordToken::Enum, &start),
 

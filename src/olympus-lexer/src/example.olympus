@@ -6,10 +6,10 @@ enum AfterGrabAction {
     ENCRYPT->789;
 }
 
-data File {
+struct File {
     path->@string;
 }
 
-server {
+rpc {
     proc getFiles() -> @Generator[File];
 }

@@ -15,38 +15,38 @@ pub struct ParsedEnum {
 }
 
 #[derive(Debug)]
-pub enum ParsedDataKind {
+pub enum ParsedStructFieldKind {
 	Builtin(TypeToken),
 	External(String),
 }
 
 #[derive(Debug)]
-pub struct ParsedDataField {
+pub struct ParsedStructField {
 	pub ident: String,
-	pub kind: ParsedDataKind,
+	pub kind: ParsedStructFieldKind,
 }
 
 #[derive(Debug)]
-pub struct ParsedData {
+pub struct ParsedStruct {
 	pub ident: String,
-	pub fields: Vec<ParsedDataField>,
+	pub fields: Vec<ParsedStructField>,
 }
 
 #[derive(Debug)]
 pub struct ParsedProcedureParam {
 	pub ident: String,
-	pub kind: ParsedDataKind,
+	pub kind: ParsedStructFieldKind,
 }
 
 #[derive(Debug)]
 pub struct ParsedProcedure {
 	pub ident: String,
 	pub params: Vec<ParsedProcedureParam>,
-	pub return_kind: ParsedDataKind,
+	pub return_kind: ParsedStructFieldKind,
 }
 
 #[derive(Debug)]
-pub struct ParsedServer {
+pub struct ParsedRpcContainer {
 	pub procedures: Vec<ParsedProcedure>,
 }
 
@@ -54,8 +54,8 @@ pub struct Parser {
 	tokens: Vec<SpannedToken>,
 	token_idx: usize,
 	pub enums: Vec<ParsedEnum>,
-	pub datas: Vec<ParsedData>,
-	pub servers: Vec<ParsedServer>,
+	pub structs: Vec<ParsedStruct>,
+	pub rpc_containers: Vec<ParsedRpcContainer>,
 }
 
 impl Parser {
@@ -65,8 +65,8 @@ impl Parser {
 			tokens,
 			token_idx: 0,
 			enums: Vec::new(),
-			datas: Vec::new(),
-			servers: Vec::new(),
+			structs: Vec::new(),
+			rpc_containers: Vec::new(),
 		}
 	}
 
@@ -117,8 +117,8 @@ impl Parser {
 				Token::Comment(_) => {}
 				Token::Keyword(keyword) => match keyword {
 					KeywordToken::Enum => self.parse_enum()?,
-					KeywordToken::Data => self.parse_data()?,
-					KeywordToken::Server => self.parse_server()?,
+					KeywordToken::Struct => self.parse_data()?,
+					KeywordToken::Rpc => self.parse_server()?,
 					KeywordToken::Proc => {
 						return Err(SpannedErr::new(
 							"This is a bug. Proc shouldn't be parsed here.".to_string(),
@@ -187,7 +187,7 @@ impl Parser {
 		Ok(())
 	}
 
-	fn data_gather_fields(&mut self) -> Result<Vec<ParsedDataField>, SpannedErr> {
+	fn data_gather_fields(&mut self) -> Result<Vec<ParsedStructField>, SpannedErr> {
 		let mut res = Vec::new();
 
 		while let Some(token) = self.pop() {
@@ -199,8 +199,8 @@ impl Parser {
 						.pop()
 						.ok_or(SpannedErr::new("Expected type".into(), self.get_span(0)))?;
 					let kind = match kind.value {
-						Token::Ident(ident) => ParsedDataKind::External(ident),
-						Token::Type(ty) => ParsedDataKind::Builtin(ty),
+						Token::Ident(ident) => ParsedStructFieldKind::External(ident),
+						Token::Type(ty) => ParsedStructFieldKind::Builtin(ty),
 						_ => return Err(SpannedErr::new("Expected type".into(), self.get_span(0))),
 					};
 
@@ -209,7 +209,7 @@ impl Parser {
 						"Expected ';' after type".into(),
 					)?;
 
-					res.push(ParsedDataField { ident, kind });
+					res.push(ParsedStructField { ident, kind });
 				}
 				Token::Ascii(AsciiToken::CloseBrace) => {
 					break;
@@ -235,7 +235,7 @@ impl Parser {
 		)?;
 
 		let fields = self.data_gather_fields()?;
-		self.datas.push(ParsedData { ident, fields });
+		self.structs.push(ParsedStruct { ident, fields });
 
 		Ok(())
 	}
@@ -262,8 +262,8 @@ impl Parser {
 									.pop()
 									.ok_or(SpannedErr::new("Expected type".into(), self.get_span(0)))?;
 								let kind = match kind.value {
-									Token::Ident(ident) => ParsedDataKind::External(ident),
-									Token::Type(ty) => ParsedDataKind::Builtin(ty),
+									Token::Ident(ident) => ParsedStructFieldKind::External(ident),
+									Token::Type(ty) => ParsedStructFieldKind::Builtin(ty),
 									_ => return Err(SpannedErr::new("Expected type".into(), self.get_span(0))),
 								};
 
@@ -286,8 +286,8 @@ impl Parser {
 						.pop()
 						.ok_or(SpannedErr::new("Expected type".into(), self.get_span(0)))?;
 					let return_kind = match return_kind.value {
-						Token::Ident(ident) => ParsedDataKind::External(ident),
-						Token::Type(ty) => ParsedDataKind::Builtin(ty),
+						Token::Ident(ident) => ParsedStructFieldKind::External(ident),
+						Token::Type(ty) => ParsedStructFieldKind::Builtin(ty),
 						_ => return Err(SpannedErr::new("Expected type".into(), self.get_span(0))),
 					};
 
@@ -324,7 +324,7 @@ impl Parser {
 		)?;
 
 		let procedures = self.server_gather_procudures()?;
-		self.servers.push(ParsedServer { procedures });
+		self.rpc_containers.push(ParsedRpcContainer { procedures });
 		Ok(())
 	}
 }

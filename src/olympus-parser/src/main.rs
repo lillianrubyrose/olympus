@@ -35,6 +35,5 @@ fn main() {
 		return;
 	}
 
-	// dbg!(parser.enums);
-	dbg!(parser.servers);
+	dbg!(parser.rpc_containers);
 }
