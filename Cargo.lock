@@ -51,7 +51,6 @@ name = "olympus-verifier"
 version = "0.0.0"
 dependencies = [
  "olympus-common",
- "olympus-lexer",
  "olympus-parser",
 ]
 

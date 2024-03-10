@@ -6,7 +6,6 @@ publish.workspace = true
 
 [dependencies]
 olympus-common.workspace = true
-olympus-lexer.workspace = true
 olympus-parser.workspace = true
 
 [lints]
