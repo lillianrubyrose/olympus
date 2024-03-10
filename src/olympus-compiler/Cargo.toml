@@ -1,11 +1,15 @@
 [package]
-name = "olympus-parser"
+name = "olympus-compiler"
 edition.workspace = true
 version.workspace = true
 publish.workspace = true
 
 [dependencies]
 olympus-lexer.workspace = true
+olympus-parser.workspace = true
+olympus-verifier.workspace = true
+
+ariadne.workspace = true
 
 [lints]
 workspace = true

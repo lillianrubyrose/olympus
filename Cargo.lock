@@ -13,10 +13,19 @@ dependencies = [
 ]
 
 [[package]]
-name = "olympus-lexer"
+name = "olympus-compiler"
 version = "0.0.0"
 dependencies = [
  "ariadne",
+ "olympus-lexer",
+ "olympus-parser",
+ "olympus-verifier",
+]
+
+[[package]]
+name = "olympus-lexer"
+version = "0.0.0"
+dependencies = [
  "unicode-segmentation",
 ]
 
@@ -24,16 +33,16 @@ dependencies = [
 name = "olympus-parser"
 version = "0.0.0"
 dependencies = [
- "ariadne",
  "olympus-lexer",
- "paste",
 ]
 
 [[package]]
-name = "paste"
-version = "1.0.14"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "de3145af08024dea9fa9914f381a17b8fc6034dfb00f3a84013f7ff43f29ed4c"
+name = "olympus-verifier"
+version = "0.0.0"
+dependencies = [
+ "olympus-lexer",
+ "olympus-parser",
+]
 
 [[package]]
 name = "unicode-segmentation"

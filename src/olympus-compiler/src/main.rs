@@ -1,5 +1,5 @@
 use ariadne::{sources, Color, Label, Report};
-use olympus_lexer::lexer::{Lexer, SpannedErr};
+use olympus_lexer::{Lexer, SpannedErr};
 use olympus_parser::Parser;
 
 fn print_err<T>(src: &str, res: Result<T, SpannedErr>) -> bool {
@@ -20,7 +20,7 @@ fn print_err<T>(src: &str, res: Result<T, SpannedErr>) -> bool {
 }
 
 fn main() {
-	let src = include_str!("example.olympus");
+	let src = include_str!("../assets/test.olympus");
 	let mut lexer = Lexer::new(src);
 	let lexer_err = print_err(src, lexer.lex());
 	if lexer_err {

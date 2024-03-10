@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use olympus_lexer::lexer::{AsciiToken, KeywordToken, SpannedErr, SpannedToken, Token, TypeToken};
+use olympus_lexer::{AsciiToken, KeywordToken, SpannedErr, SpannedToken, Token, TypeToken};
 
 #[derive(Debug)]
 pub struct ParsedEnumVariant {
