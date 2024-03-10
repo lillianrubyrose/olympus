@@ -1,5 +1,6 @@
 use std::ops::Range;
 
+use olympus_common::{Spanned, SpannedErr};
 use unicode_segmentation::UnicodeSegmentation;
 
 #[derive(Debug, Clone)]
@@ -81,21 +82,7 @@ pub enum Token {
 	Number(i16),
 }
 
-#[derive(Debug, Clone)]
-pub struct Spanned<T, S = Range<usize>> {
-	pub value: T,
-	pub span: S,
-}
-
-impl<T, S> Spanned<T, S> {
-	#[must_use]
-	pub fn new(value: T, span: S) -> Self {
-		Self { value, span }
-	}
-}
-
 pub type SpannedToken = Spanned<Token>;
-pub type SpannedErr = Spanned<String>;
 
 #[derive(Debug, Clone, Copy)]
 pub struct LexPoint {
@@ -105,9 +92,8 @@ pub struct LexPoint {
 }
 
 pub struct Lexer<'lex> {
-	pub src: &'lex str,
-	pub graphemes: Vec<&'lex str>,
-	pub curr_point: LexPoint,
+	graphemes: Vec<&'lex str>,
+	curr_point: LexPoint,
 	pub tokens: Vec<SpannedToken>,
 }
 
@@ -115,7 +101,6 @@ impl<'lex> Lexer<'lex> {
 	#[must_use]
 	pub fn new(src: &'lex str) -> Self {
 		Self {
-			src,
 			graphemes: src.graphemes(true).collect(),
 			curr_point: LexPoint {
 				line: 1,

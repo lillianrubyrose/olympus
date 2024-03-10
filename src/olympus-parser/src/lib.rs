@@ -1,16 +1,17 @@
 use std::ops::Range;
 
-use olympus_lexer::{AsciiToken, KeywordToken, SpannedErr, SpannedToken, Token, TypeToken};
+use olympus_common::{Spanned, SpannedErr};
+use olympus_lexer::{AsciiToken, KeywordToken, SpannedToken, Token, TypeToken};
 
 #[derive(Debug)]
 pub struct ParsedEnumVariant {
-	pub ident: String,
+	pub ident: Spanned<String>,
 	pub value: i16,
 }
 
 #[derive(Debug)]
 pub struct ParsedEnum {
-	pub ident: String,
+	pub ident: Spanned<String>,
 	pub variants: Vec<ParsedEnumVariant>,
 }
 
@@ -22,25 +23,25 @@ pub enum ParsedStructFieldKind {
 
 #[derive(Debug)]
 pub struct ParsedStructField {
-	pub ident: String,
+	pub ident: Spanned<String>,
 	pub kind: ParsedStructFieldKind,
 }
 
 #[derive(Debug)]
 pub struct ParsedStruct {
-	pub ident: String,
+	pub ident: Spanned<String>,
 	pub fields: Vec<ParsedStructField>,
 }
 
 #[derive(Debug)]
 pub struct ParsedProcedureParam {
-	pub ident: String,
+	pub ident: Spanned<String>,
 	pub kind: ParsedStructFieldKind,
 }
 
 #[derive(Debug)]
 pub struct ParsedProcedure {
-	pub ident: String,
+	pub ident: Spanned<String>,
 	pub params: Vec<ParsedProcedureParam>,
 	pub return_kind: ParsedStructFieldKind,
 }
@@ -138,20 +139,23 @@ impl Parser {
 		Ok(())
 	}
 
-	fn enum_gather_variants(&mut self) -> Result<Vec<(String, i16)>, SpannedErr> {
+	fn enum_gather_variants(&mut self) -> Result<Vec<ParsedEnumVariant>, SpannedErr> {
 		let mut res = Vec::new();
 
 		while let Some(token) = self.pop() {
 			match token.value {
 				Token::Ident(ident) => {
 					self.pop_must_match(|t| matches!(t, Token::Arrow), "Expected '->' after Enum Ident".into())?;
-					let number = next_must_match!(self, "Expected enum tag".into(), Number);
+					let Spanned { value, .. } = next_must_match!(self, "Expected enum tag".into(), Number);
 					self.pop_must_match(
 						|t| matches!(t, Token::Ascii(AsciiToken::SemiColon)),
 						"Expected ';' after Enum Value".into(),
 					)?;
 
-					res.push((ident, number));
+					res.push(ParsedEnumVariant {
+						ident: Spanned::new(ident, token.span),
+						value,
+					});
 				}
 				Token::Ascii(AsciiToken::CloseBrace) => {
 					break;
@@ -176,11 +180,7 @@ impl Parser {
 			"Expected '{' after Enum Ident".into(),
 		)?;
 
-		let variants = self
-			.enum_gather_variants()?
-			.into_iter()
-			.map(|v| ParsedEnumVariant { ident: v.0, value: v.1 })
-			.collect();
+		let variants = self.enum_gather_variants()?;
 
 		self.enums.push(ParsedEnum { ident, variants });
 
@@ -209,7 +209,10 @@ impl Parser {
 						"Expected ';' after type".into(),
 					)?;
 
-					res.push(ParsedStructField { ident, kind });
+					res.push(ParsedStructField {
+						ident: Spanned::new(ident, token.span),
+						kind,
+					});
 				}
 				Token::Ascii(AsciiToken::CloseBrace) => {
 					break;
@@ -267,7 +270,10 @@ impl Parser {
 									_ => return Err(SpannedErr::new("Expected type".into(), self.get_span(0))),
 								};
 
-								params.push(ParsedProcedureParam { ident, kind });
+								params.push(ParsedProcedureParam {
+									ident: Spanned::new(ident, token.span),
+									kind,
+								});
 							}
 							Token::Ascii(AsciiToken::CloseParen) => break,
 							Token::Ascii(AsciiToken::Comma) => continue,
@@ -336,8 +342,9 @@ macro_rules! next_must_match {
 		match peeked {
 			Some(spanned) => match spanned.value {
 				Token::$match(v) => {
+					let span = $self.get_span(0);
 					let _ = $self.pop();
-					v
+					Spanned::new(v, span)
 				}
 				_ => return Err(SpannedErr::new($expected, $self.get_span(0))),
 			},
