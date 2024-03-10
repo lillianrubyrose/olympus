@@ -1,18 +1,31 @@
-use ariadne::{sources, Color, Label, Report};
-use olympus_common::SpannedErr;
+use ariadne::{sources, Label, Report};
+use olympus_common::OlympusError;
 use olympus_lexer::Lexer;
 use olympus_parser::Parser;
 use olympus_verifier::verify_parser_outputs;
 
-fn print_err<T>(src: &str, res: Result<T, SpannedErr>) -> bool {
+fn print_err<T>(src: &str, res: Result<T, OlympusError>) -> bool {
 	if let Err(err) = res {
-		Report::build(ariadne::ReportKind::Error, "example.olympus", err.span.start)
-			.with_message(err.value.clone())
-			.with_label(
-				Label::new(("example.olympus", err.span))
-					.with_message(err.value)
-					.with_color(Color::Red),
-			)
+		let mut lowest_start = usize::MAX;
+		for label in &err.labels {
+			if label.span.start < lowest_start {
+				lowest_start = label.span.start;
+			}
+		}
+
+		let labels = err
+			.labels
+			.into_iter()
+			.map(|label| {
+				Label::new(("example.olympus", label.span))
+					.with_message(label.message)
+					.with_color(label.color)
+			})
+			.collect::<Vec<_>>();
+
+		Report::build(ariadne::ReportKind::Error, "example.olympus", lowest_start)
+			.with_message(err.subject)
+			.with_labels(labels)
 			.finish()
 			.print(sources([("example.olympus", src)]))
 			.unwrap();
@@ -41,20 +54,4 @@ fn main() {
 	if verifier_err {
 		println!("exited with verifier err");
 	}
-
-	// Report::build(ariadne::ReportKind::Error, "example.olympus", 35)
-	// 	.with_message("Duplicate variant value found in 'Action' enum")
-	// 	.with_label(
-	// 		Label::new(("example.olympus", 18..24))
-	// 			.with_message("Original here")
-	// 			.with_color(Color::Yellow),
-	// 	)
-	// 	.with_label(
-	// 		Label::new(("example.olympus", 35..38))
-	// 			.with_message("Duplicate here")
-	// 			.with_color(Color::Red),
-	// 	)
-	// 	.finish()
-	// 	.print(sources([("example.olympus", src)]))
-	// 	.unwrap();
 }

@@ -15,6 +15,9 @@ dependencies = [
 [[package]]
 name = "olympus-common"
 version = "0.0.0"
+dependencies = [
+ "ariadne",
+]
 
 [[package]]
 name = "olympus-compiler"

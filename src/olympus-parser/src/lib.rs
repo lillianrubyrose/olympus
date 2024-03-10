@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use olympus_common::{Spanned, SpannedErr};
+use olympus_common::{OlympusError, Spanned};
 use olympus_lexer::{AsciiToken, KeywordToken, SpannedToken, Token, TypeToken};
 
 #[derive(Debug)]
@@ -94,21 +94,21 @@ impl Parser {
 	pub fn pop_must_match(
 		&mut self,
 		predicate: impl Fn(Token) -> bool,
-		error: String,
-	) -> Result<SpannedToken, SpannedErr> {
+		error: &str,
+	) -> Result<SpannedToken, OlympusError> {
 		let next = self
 			.peek()
-			.ok_or(SpannedErr::new("Expected token after".into(), self.get_span(-1)))?;
+			.ok_or(OlympusError::error("Expected token after", self.get_span(-1)))?;
 
 		if !predicate(next.value.clone()) {
-			return Err(SpannedErr::new(error, self.get_span(0)));
+			return Err(OlympusError::error(error, self.get_span(0)));
 		}
 
 		self.token_idx += 1;
 		Ok(next)
 	}
 
-	pub fn parse(&mut self) -> Result<(), SpannedErr> {
+	pub fn parse(&mut self) -> Result<(), OlympusError> {
 		while self.token_idx < self.tokens.len() {
 			let Some(token) = self.pop() else {
 				break;
@@ -121,15 +121,15 @@ impl Parser {
 					KeywordToken::Struct => self.parse_data()?,
 					KeywordToken::Rpc => self.parse_server()?,
 					KeywordToken::Proc => {
-						return Err(SpannedErr::new(
-							"This is a bug. Proc shouldn't be parsed here.".to_string(),
+						return Err(OlympusError::error(
+							"This is a bug. Proc shouldn't be parsed here.",
 							self.get_span(0),
 						))
 					}
 				},
 				token => {
-					return Err(SpannedErr::new(
-						format!("Unexpected token: {token:?}"),
+					return Err(OlympusError::error(
+						&format!("Unexpected token: {token:?}"),
 						self.get_span(0),
 					))
 				}
@@ -139,17 +139,17 @@ impl Parser {
 		Ok(())
 	}
 
-	fn enum_gather_variants(&mut self) -> Result<Vec<ParsedEnumVariant>, SpannedErr> {
+	fn enum_gather_variants(&mut self) -> Result<Vec<ParsedEnumVariant>, OlympusError> {
 		let mut res = Vec::new();
 
 		while let Some(token) = self.pop() {
 			match token.value {
 				Token::Ident(ident) => {
-					self.pop_must_match(|t| matches!(t, Token::Arrow), "Expected '->' after Enum Ident".into())?;
-					let Spanned { value, .. } = next_must_match!(self, "Expected enum tag".into(), Number);
+					self.pop_must_match(|t| matches!(t, Token::Arrow), "Expected '->' after Enum Ident")?;
+					let Spanned { value, .. } = next_must_match!(self, "Expected enum tag", Number);
 					self.pop_must_match(
 						|t| matches!(t, Token::Ascii(AsciiToken::SemiColon)),
-						"Expected ';' after Enum Value".into(),
+						"Expected ';' after Enum Value",
 					)?;
 
 					res.push(ParsedEnumVariant {
@@ -161,8 +161,8 @@ impl Parser {
 					break;
 				}
 				token => {
-					return Err(SpannedErr::new(
-						format!("Expected '}}' or Ident. Got: {token:?}"),
+					return Err(OlympusError::error(
+						&format!("Expected '}}' or Ident. Got: {token:?}"),
 						self.get_span(0),
 					))
 				}
@@ -172,12 +172,12 @@ impl Parser {
 		Ok(res)
 	}
 
-	pub fn parse_enum(&mut self) -> Result<(), SpannedErr> {
-		let ident = next_must_match!(self, "Expected Ident for enum".into(), Ident);
+	pub fn parse_enum(&mut self) -> Result<(), OlympusError> {
+		let ident = next_must_match!(self, "Expected Ident for enum", Ident);
 
 		self.pop_must_match(
 			|t| matches!(t, Token::Ascii(AsciiToken::OpenBrace)),
-			"Expected '{' after Enum Ident".into(),
+			"Expected '{' after Enum Ident",
 		)?;
 
 		let variants = self.enum_gather_variants()?;
@@ -187,26 +187,26 @@ impl Parser {
 		Ok(())
 	}
 
-	fn data_gather_fields(&mut self) -> Result<Vec<ParsedStructField>, SpannedErr> {
+	fn data_gather_fields(&mut self) -> Result<Vec<ParsedStructField>, OlympusError> {
 		let mut res = Vec::new();
 
 		while let Some(token) = self.pop() {
 			match token.value {
 				Token::Ident(ident) => {
-					self.pop_must_match(|t| matches!(t, Token::Arrow), "Expected '->' after ident".into())?;
+					self.pop_must_match(|t| matches!(t, Token::Arrow), "Expected '->' after ident")?;
 
 					let kind = self
 						.pop()
-						.ok_or(SpannedErr::new("Expected type".into(), self.get_span(0)))?;
+						.ok_or(OlympusError::error("Expected type", self.get_span(0)))?;
 					let kind = match kind.value {
 						Token::Ident(ident) => ParsedStructFieldKind::External(ident),
 						Token::Type(ty) => ParsedStructFieldKind::Builtin(ty),
-						_ => return Err(SpannedErr::new("Expected type".into(), self.get_span(0))),
+						_ => return Err(OlympusError::error("Expected type", self.get_span(0))),
 					};
 
 					self.pop_must_match(
 						|t| matches!(t, Token::Ascii(AsciiToken::SemiColon)),
-						"Expected ';' after type".into(),
+						"Expected ';' after type",
 					)?;
 
 					res.push(ParsedStructField {
@@ -218,8 +218,8 @@ impl Parser {
 					break;
 				}
 				token => {
-					return Err(SpannedErr::new(
-						format!("Expected '}}' or ident. Got: {token:?}"),
+					return Err(OlympusError::error(
+						&format!("Expected '}}' or ident. Got: {token:?}"),
 						self.get_span(0),
 					))
 				}
@@ -229,12 +229,12 @@ impl Parser {
 		Ok(res)
 	}
 
-	pub fn parse_data(&mut self) -> Result<(), SpannedErr> {
-		let ident = next_must_match!(self, "Expected Ident for data".into(), Ident);
+	pub fn parse_data(&mut self) -> Result<(), OlympusError> {
+		let ident = next_must_match!(self, "Expected Ident for data", Ident);
 
 		self.pop_must_match(
 			|t| matches!(t, Token::Ascii(AsciiToken::OpenBrace)),
-			"Expected '{' after ident".into(),
+			"Expected '{' after ident",
 		)?;
 
 		let fields = self.data_gather_fields()?;
@@ -243,31 +243,31 @@ impl Parser {
 		Ok(())
 	}
 
-	fn server_gather_procudures(&mut self) -> Result<Vec<ParsedProcedure>, SpannedErr> {
+	fn server_gather_procudures(&mut self) -> Result<Vec<ParsedProcedure>, OlympusError> {
 		let mut res = Vec::new();
 
 		while let Some(token) = self.pop() {
 			match token.value {
 				Token::Keyword(KeywordToken::Proc) => {
-					let ident = next_must_match!(self, "Expected ident".into(), Ident);
+					let ident = next_must_match!(self, "Expected ident", Ident);
 					self.pop_must_match(
 						|t| matches!(t, Token::Ascii(AsciiToken::OpenParen)),
-						"Expected '(' after ident".into(),
+						"Expected '(' after ident",
 					)?;
 
 					let mut params: Vec<ParsedProcedureParam> = Vec::new();
 					while let Some(token) = self.pop() {
 						match token.value {
 							Token::Ident(ident) => {
-								self.pop_must_match(|t| matches!(t, Token::Arrow), "Expected '->' after ident".into())?;
+								self.pop_must_match(|t| matches!(t, Token::Arrow), "Expected '->' after ident")?;
 
 								let kind = self
 									.pop()
-									.ok_or(SpannedErr::new("Expected type".into(), self.get_span(0)))?;
+									.ok_or(OlympusError::error("Expected type", self.get_span(0)))?;
 								let kind = match kind.value {
 									Token::Ident(ident) => ParsedStructFieldKind::External(ident),
 									Token::Type(ty) => ParsedStructFieldKind::Builtin(ty),
-									_ => return Err(SpannedErr::new("Expected type".into(), self.get_span(0))),
+									_ => return Err(OlympusError::error("Expected type", self.get_span(0))),
 								};
 
 								params.push(ParsedProcedureParam {
@@ -278,28 +278,28 @@ impl Parser {
 							Token::Ascii(AsciiToken::CloseParen) => break,
 							Token::Ascii(AsciiToken::Comma) => continue,
 							token => {
-								return Err(SpannedErr::new(
-									format!("Expected ident or ')'. Got: {token:?}"),
+								return Err(OlympusError::error(
+									&format!("Expected ident or ')'. Got: {token:?}"),
 									self.get_span(0),
 								))
 							}
 						}
 					}
 
-					self.pop_must_match(|t| matches!(t, Token::Arrow), "Expected '->' after params".into())?;
+					self.pop_must_match(|t| matches!(t, Token::Arrow), "Expected '->' after params")?;
 
 					let return_kind = self
 						.pop()
-						.ok_or(SpannedErr::new("Expected type".into(), self.get_span(0)))?;
+						.ok_or(OlympusError::error("Expected type", self.get_span(0)))?;
 					let return_kind = match return_kind.value {
 						Token::Ident(ident) => ParsedStructFieldKind::External(ident),
 						Token::Type(ty) => ParsedStructFieldKind::Builtin(ty),
-						_ => return Err(SpannedErr::new("Expected type".into(), self.get_span(0))),
+						_ => return Err(OlympusError::error("Expected type", self.get_span(0))),
 					};
 
 					self.pop_must_match(
 						|t| matches!(t, Token::Ascii(AsciiToken::SemiColon)),
-						"Expected ';' after return type".into(),
+						"Expected ';' after return type",
 					)?;
 
 					res.push(ParsedProcedure {
@@ -312,8 +312,8 @@ impl Parser {
 					break;
 				}
 				token => {
-					return Err(SpannedErr::new(
-						format!("Expected '}}' or proc. Got: {token:?}"),
+					return Err(OlympusError::error(
+						&format!("Expected '}}' or proc. Got: {token:?}"),
 						self.get_span(0),
 					))
 				}
@@ -323,10 +323,10 @@ impl Parser {
 		Ok(res)
 	}
 
-	pub fn parse_server(&mut self) -> Result<(), SpannedErr> {
+	pub fn parse_server(&mut self) -> Result<(), OlympusError> {
 		self.pop_must_match(
 			|t| matches!(t, Token::Ascii(AsciiToken::OpenBrace)),
-			"Expected '{' after server".into(),
+			"Expected '{' after server",
 		)?;
 
 		let procedures = self.server_gather_procudures()?;
@@ -346,9 +346,9 @@ macro_rules! next_must_match {
 					let _ = $self.pop();
 					Spanned::new(v, span)
 				}
-				_ => return Err(SpannedErr::new($expected, $self.get_span(0))),
+				_ => return Err(OlympusError::error($expected, $self.get_span(0))),
 			},
-			_ => return Err(SpannedErr::new($expected, $self.get_span(0))),
+			_ => return Err(OlympusError::error($expected, $self.get_span(0))),
 		}
 	}};
 }

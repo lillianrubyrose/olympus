@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
-use olympus_common::{Spanned, SpannedErr};
+use olympus_common::{OlympusError, Spanned};
 use olympus_parser::{ParsedEnum, ParsedEnumVariant, Parser};
 
-fn find_enum_variant_duplicates(variants: &[ParsedEnumVariant]) -> Result<(), SpannedErr> {
+fn find_enum_variant_duplicates(variants: &[ParsedEnumVariant]) -> Result<(), OlympusError> {
 	variants
 		.iter()
 		.fold(HashMap::<i16, Option<Spanned<String>>, _>::new(), |mut acc, variant| {
@@ -17,8 +17,8 @@ fn find_enum_variant_duplicates(variants: &[ParsedEnumVariant]) -> Result<(), Sp
 		.into_iter()
 		.try_fold((), |acc, (_, ident)| {
 			if let Some(ident) = ident {
-				return Err(SpannedErr::new(
-					"Enum with duplicated value found".into(),
+				return Err(OlympusError::error(
+					"Enum with duplicated value found",
 					ident.span.clone(),
 				));
 			}
@@ -33,7 +33,7 @@ pub fn verify_parser_outputs(
 		rpc_containers: parsed_rpc_containers,
 		..
 	}: Parser,
-) -> Result<(), SpannedErr> {
+) -> Result<(), OlympusError> {
 	for ParsedEnum { ident, variants } in parsed_enums {
 		find_enum_variant_duplicates(&variants)?;
 	}

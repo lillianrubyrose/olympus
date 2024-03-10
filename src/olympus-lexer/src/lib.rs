@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use olympus_common::{Spanned, SpannedErr};
+use olympus_common::{OlympusError, Spanned};
 use unicode_segmentation::UnicodeSegmentation;
 
 #[derive(Debug, Clone)]
@@ -195,7 +195,7 @@ impl<'lex> Lexer<'lex> {
 		Some(ident)
 	}
 
-	pub fn lex(&mut self) -> Result<(), SpannedErr> {
+	pub fn lex(&mut self) -> Result<(), OlympusError> {
 		while !self.is_eof() {
 			self.skip_whitespace();
 
@@ -228,8 +228,8 @@ impl<'lex> Lexer<'lex> {
 				"," => self.add(AsciiToken::Comma, &start),
 				"-" if self.pop_if(|v| v == ">").is_some() => self.add(Token::Arrow, &start),
 				"@" if matches!(self.peek(), Some(v) if v.chars().all(Self::is_ident_chr_first)) => {
-					let ident = self.pop_ident(None).ok_or(SpannedErr::new(
-						"Couldn't pop ident after finding it, this shouldn't ever happen.".into(),
+					let ident = self.pop_ident(None).ok_or(OlympusError::error(
+						"Couldn't pop ident after finding it, this shouldn't ever happen.",
 						self.get_span(&start),
 					))?;
 
@@ -255,17 +255,12 @@ impl<'lex> Lexer<'lex> {
 						"string" => self.add(TypeToken::String, &start),
 						"Generator" => self.add(TypeToken::Generator, &start),
 
-						_ => {
-							return Err(SpannedErr::new(
-								"Unrecognized builtin".to_string(),
-								self.get_span(&start),
-							))
-						}
+						_ => return Err(OlympusError::error("Unrecognized builtin", self.get_span(&start))),
 					}
 				}
 				c if c.chars().all(Self::is_ident_chr_first) => {
-					let ident = self.pop_ident(Some(c)).ok_or(SpannedErr::new(
-						"Couldn't pop ident after finding it, this shouldn't ever happen.".into(),
+					let ident = self.pop_ident(Some(c)).ok_or(OlympusError::error(
+						"Couldn't pop ident after finding it, this shouldn't ever happen.",
 						self.get_span(&start),
 					))?;
 
@@ -284,14 +279,14 @@ impl<'lex> Lexer<'lex> {
 						number.push_str(v);
 					}
 
-					let number = number
-						.parse::<i16>()
-						.map_err(|_| SpannedErr::new(format!("Max enum tag is {}", i16::MAX), self.get_span(&start)))?;
+					let number = number.parse::<i16>().map_err(|_| {
+						OlympusError::error(&format!("Max enum tag is {}", i16::MAX), self.get_span(&start))
+					})?;
 					self.add(Token::Number(number), &start);
 				}
 				_ => {
-					return Err(SpannedErr::new(
-						format!("Unexpected character: {c}"),
+					return Err(OlympusError::error(
+						&format!("Unexpected character: {c}"),
 						self.get_span(&start),
 					))
 				}
