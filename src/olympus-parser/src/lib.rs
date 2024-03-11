@@ -1,7 +1,7 @@
 use std::ops::Range;
 
 use olympus_common::{OlympusError, Spanned};
-use olympus_lexer::{AsciiToken, KeywordToken, SpannedToken, Token, TypeToken};
+use olympus_lexer::{AsciiToken, IntToken, KeywordToken, SpannedToken, Token, TypeToken};
 
 #[derive(Debug)]
 pub struct ParsedEnumVariant {
@@ -16,8 +16,16 @@ pub struct ParsedEnum {
 }
 
 #[derive(Debug)]
+pub enum ParsedBultin {
+	Int(IntToken),
+	VariableInt(IntToken),
+	String,
+	Array(Box<ParsedTypeKind>),
+}
+
+#[derive(Debug)]
 pub enum ParsedTypeKind {
-	Builtin(TypeToken),
+	Builtin(ParsedBultin),
 	External(String),
 }
 
@@ -187,6 +195,73 @@ impl Parser {
 		Ok(())
 	}
 
+	fn parse_array_type(&mut self) -> Result<ParsedTypeKind, OlympusError> {
+		self.pop_must_match(
+			|t| matches!(t, Token::Ascii(AsciiToken::OpenBracket)),
+			"Expected '[' after array",
+		)?;
+
+		let array_type = self.pop().ok_or(OlympusError::error(
+			"Expected type after array declaration",
+			self.get_span(-1),
+		))?;
+
+		let value = match array_type.value {
+			Token::Ident(ident) => Ok(ParsedTypeKind::Builtin(ParsedBultin::Array(Box::new(
+				ParsedTypeKind::External(ident),
+			)))),
+			Token::Type(ty) => match ty {
+				TypeToken::Int(v) => {
+					self.pop_must_match(
+						|t| matches!(t, Token::Ascii(AsciiToken::CloseBracket)),
+						"Expected ']' after array type",
+					)?;
+					Ok(ParsedTypeKind::Builtin(ParsedBultin::Int(v)))
+				}
+				TypeToken::VariableInt(v) => {
+					self.pop_must_match(
+						|t| matches!(t, Token::Ascii(AsciiToken::CloseBracket)),
+						"Expected ']' after array type",
+					)?;
+					Ok(ParsedTypeKind::Builtin(ParsedBultin::VariableInt(v)))
+				}
+				TypeToken::String => {
+					self.pop_must_match(
+						|t| matches!(t, Token::Ascii(AsciiToken::CloseBracket)),
+						"Expected ']' after array type",
+					)?;
+					Ok(ParsedTypeKind::Builtin(ParsedBultin::String))
+				}
+				TypeToken::Array => Ok(ParsedTypeKind::Builtin(ParsedBultin::Array(Box::new(
+					self.parse_array_type()?,
+				)))),
+			},
+			_ => Err(OlympusError::error("Expected type", self.get_span(0))),
+		}?;
+
+		self.pop_must_match(
+			|t| matches!(t, Token::Ascii(AsciiToken::CloseBracket)),
+			"Expected ']' after array type",
+		)?;
+
+		Ok(value)
+	}
+
+	fn parse_type(&mut self, kind_token: Token) -> Result<ParsedTypeKind, OlympusError> {
+		let array_type = match kind_token {
+			Token::Ident(ident) => return Ok(ParsedTypeKind::External(ident)),
+			Token::Type(ty) => match ty {
+				TypeToken::Int(v) => return Ok(ParsedTypeKind::Builtin(ParsedBultin::Int(v))),
+				TypeToken::VariableInt(v) => return Ok(ParsedTypeKind::Builtin(ParsedBultin::VariableInt(v))),
+				TypeToken::String => return Ok(ParsedTypeKind::Builtin(ParsedBultin::String)),
+				TypeToken::Array => self.parse_array_type()?,
+			},
+			_ => return Err(OlympusError::error("Expected type", self.get_span(0))),
+		};
+
+		Ok(array_type)
+	}
+
 	fn data_gather_fields(&mut self) -> Result<Vec<ParsedStructField>, OlympusError> {
 		let mut res = Vec::new();
 
@@ -198,11 +273,7 @@ impl Parser {
 					let kind = self
 						.pop()
 						.ok_or(OlympusError::error("Expected type", self.get_span(0)))?;
-					let kind = match kind.value {
-						Token::Ident(ident) => ParsedTypeKind::External(ident),
-						Token::Type(ty) => ParsedTypeKind::Builtin(ty),
-						_ => return Err(OlympusError::error("Expected type", self.get_span(0))),
-					};
+					let kind = self.parse_type(kind.value)?;
 
 					self.pop_must_match(
 						|t| matches!(t, Token::Ascii(AsciiToken::SemiColon)),
@@ -264,11 +335,7 @@ impl Parser {
 								let kind = self
 									.pop()
 									.ok_or(OlympusError::error("Expected type", self.get_span(0)))?;
-								let kind = match kind.value {
-									Token::Ident(ident) => ParsedTypeKind::External(ident),
-									Token::Type(ty) => ParsedTypeKind::Builtin(ty),
-									_ => return Err(OlympusError::error("Expected type", self.get_span(0))),
-								};
+								let kind = self.parse_type(kind.value)?;
 
 								params.push(ParsedProcedureParam {
 									ident: Spanned::new(ident, token.span),
@@ -291,11 +358,7 @@ impl Parser {
 					let return_kind = self
 						.pop()
 						.ok_or(OlympusError::error("Expected type", self.get_span(0)))?;
-					let return_kind = match return_kind.value {
-						Token::Ident(ident) => ParsedTypeKind::External(ident),
-						Token::Type(ty) => ParsedTypeKind::Builtin(ty),
-						_ => return Err(OlympusError::error("Expected type", self.get_span(0))),
-					};
+					let return_kind = self.parse_type(return_kind.value)?;
 
 					self.pop_must_match(
 						|t| matches!(t, Token::Ascii(AsciiToken::SemiColon)),

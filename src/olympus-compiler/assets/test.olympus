@@ -15,6 +15,5 @@ enum FileSomething {
 }
 
 rpc {
-    proc getFiles() -> @string;
-    proc meow(action->Action, version->@int8) -> @int8;
+    proc getFiles() -> @array[@array[@array[File]]];
 }

@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use olympus_common::{ErrorColor, OlympusError, Spanned};
 use olympus_parser::{
-	ParsedEnum, ParsedEnumVariant, ParsedProcedure, ParsedProcedureParam, ParsedRpcContainer, ParsedStruct,
-	ParsedStructField, ParsedTypeKind, Parser,
+	ParsedBultin, ParsedEnum, ParsedEnumVariant, ParsedProcedure, ParsedProcedureParam, ParsedRpcContainer,
+	ParsedStruct, ParsedStructField, ParsedTypeKind, Parser,
 };
 
 fn find_duplicate_ident(idents: &[Spanned<String>]) -> Option<(Spanned<String>, Spanned<String>)> {
@@ -108,6 +108,8 @@ fn check_accessible_type(
 				ident.span.clone(),
 			));
 		}
+	} else if let ParsedTypeKind::Builtin(ParsedBultin::Array(ty)) = asking_for {
+		check_accessible_type(accessible_types, ident, ty)?;
 	}
 
 	Ok(())
