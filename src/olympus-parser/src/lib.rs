@@ -342,8 +342,8 @@ macro_rules! next_must_match {
 		match peeked {
 			Some(spanned) => match spanned.value {
 				Token::$match(v) => {
-					let span = $self.get_span(0);
 					let _ = $self.pop();
+					let span = $self.get_span(0);
 					Spanned::new(v, span)
 				}
 				_ => return Err(OlympusError::error($expected, $self.get_span(0))),
