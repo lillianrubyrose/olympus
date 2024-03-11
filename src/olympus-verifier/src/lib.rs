@@ -163,6 +163,8 @@ pub fn verify_parser_outputs(
 			for param in &proc.params {
 				check_accessible_type(&accessible_types, &param.ident, &param.kind)?;
 			}
+
+			check_accessible_type(&accessible_types, &proc.ident, &proc.return_kind)?;
 		}
 	}
 
