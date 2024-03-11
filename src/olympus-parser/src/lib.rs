@@ -16,7 +16,7 @@ pub struct ParsedEnum {
 }
 
 #[derive(Debug)]
-pub enum ParsedStructFieldKind {
+pub enum ParsedTypeKind {
 	Builtin(TypeToken),
 	External(String),
 }
@@ -24,7 +24,7 @@ pub enum ParsedStructFieldKind {
 #[derive(Debug)]
 pub struct ParsedStructField {
 	pub ident: Spanned<String>,
-	pub kind: ParsedStructFieldKind,
+	pub kind: ParsedTypeKind,
 }
 
 #[derive(Debug)]
@@ -36,14 +36,14 @@ pub struct ParsedStruct {
 #[derive(Debug)]
 pub struct ParsedProcedureParam {
 	pub ident: Spanned<String>,
-	pub kind: ParsedStructFieldKind,
+	pub kind: ParsedTypeKind,
 }
 
 #[derive(Debug)]
 pub struct ParsedProcedure {
 	pub ident: Spanned<String>,
 	pub params: Vec<ParsedProcedureParam>,
-	pub return_kind: ParsedStructFieldKind,
+	pub return_kind: ParsedTypeKind,
 }
 
 #[derive(Debug)]
@@ -199,8 +199,8 @@ impl Parser {
 						.pop()
 						.ok_or(OlympusError::error("Expected type", self.get_span(0)))?;
 					let kind = match kind.value {
-						Token::Ident(ident) => ParsedStructFieldKind::External(ident),
-						Token::Type(ty) => ParsedStructFieldKind::Builtin(ty),
+						Token::Ident(ident) => ParsedTypeKind::External(ident),
+						Token::Type(ty) => ParsedTypeKind::Builtin(ty),
 						_ => return Err(OlympusError::error("Expected type", self.get_span(0))),
 					};
 
@@ -265,8 +265,8 @@ impl Parser {
 									.pop()
 									.ok_or(OlympusError::error("Expected type", self.get_span(0)))?;
 								let kind = match kind.value {
-									Token::Ident(ident) => ParsedStructFieldKind::External(ident),
-									Token::Type(ty) => ParsedStructFieldKind::Builtin(ty),
+									Token::Ident(ident) => ParsedTypeKind::External(ident),
+									Token::Type(ty) => ParsedTypeKind::Builtin(ty),
 									_ => return Err(OlympusError::error("Expected type", self.get_span(0))),
 								};
 
@@ -292,8 +292,8 @@ impl Parser {
 						.pop()
 						.ok_or(OlympusError::error("Expected type", self.get_span(0)))?;
 					let return_kind = match return_kind.value {
-						Token::Ident(ident) => ParsedStructFieldKind::External(ident),
-						Token::Type(ty) => ParsedStructFieldKind::Builtin(ty),
+						Token::Ident(ident) => ParsedTypeKind::External(ident),
+						Token::Type(ty) => ParsedTypeKind::Builtin(ty),
 						_ => return Err(OlympusError::error("Expected type", self.get_span(0))),
 					};
 

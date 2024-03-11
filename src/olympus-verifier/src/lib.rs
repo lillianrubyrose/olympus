@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use olympus_common::{ErrorColor, OlympusError, Spanned};
 use olympus_parser::{
 	ParsedEnum, ParsedEnumVariant, ParsedProcedure, ParsedProcedureParam, ParsedRpcContainer, ParsedStruct,
-	ParsedStructField, Parser,
+	ParsedStructField, ParsedTypeKind, Parser,
 };
 
 fn find_duplicate_ident(idents: &[Spanned<String>]) -> Option<(Spanned<String>, Spanned<String>)> {
@@ -96,6 +96,23 @@ fn find_rpc_procedure_param_duplicates(params: &[ParsedProcedureParam]) -> Resul
 	Ok(())
 }
 
+fn check_accessible_type(
+	accessible_types: &[Spanned<String>],
+	ident: &Spanned<String>,
+	asking_for: &ParsedTypeKind,
+) -> Result<(), OlympusError> {
+	if let ParsedTypeKind::External(external) = asking_for {
+		if !accessible_types.iter().any(|t| external == &t.value) {
+			return Err(OlympusError::error(
+				&format!("Type '{external}' not found"),
+				ident.span.clone(),
+			));
+		}
+	}
+
+	Ok(())
+}
+
 pub fn verify_parser_outputs(
 	Parser {
 		enums: parsed_enums,
@@ -104,6 +121,20 @@ pub fn verify_parser_outputs(
 		..
 	}: Parser,
 ) -> Result<(), OlympusError> {
+	let accessible_types = parsed_enums
+		.iter()
+		.map(|v| v.ident.clone())
+		.chain(parsed_structs.iter().map(|v| v.ident.clone()))
+		.collect::<Vec<_>>();
+
+	// checking for duplicate idents / values
+
+	if let Some((original_ident, dup_ident)) = find_duplicate_ident(&accessible_types) {
+		return Err(OlympusError::new("Duplicate enum/struct ident found")
+			.label("Original here", original_ident.span, ErrorColor::Yellow)
+			.label("Duplicate here", dup_ident.span, ErrorColor::Red));
+	}
+
 	for ParsedEnum { ident: _, variants } in &parsed_enums {
 		find_enum_variant_duplicates(variants)?;
 	}
@@ -112,22 +143,26 @@ pub fn verify_parser_outputs(
 		find_struct_field_duplicates(fields)?;
 	}
 
-	if let Some((original_ident, dup_ident)) = find_duplicate_ident(
-		&parsed_enums
-			.iter()
-			.map(|v| v.ident.clone())
-			.chain(parsed_structs.iter().map(|v| v.ident.clone()))
-			.collect::<Vec<_>>(),
-	) {
-		return Err(OlympusError::new("Duplicate enum/struct ident found")
-			.label("Original here", original_ident.span, ErrorColor::Yellow)
-			.label("Duplicate here", dup_ident.span, ErrorColor::Red));
-	}
-
 	for ParsedRpcContainer { procedures } in &parsed_rpc_containers {
 		find_rpc_procedure_duplicates(procedures)?;
 		for proc in procedures {
 			find_rpc_procedure_param_duplicates(&proc.params)?;
+		}
+	}
+
+	// checking that types are actually there
+
+	for ParsedStruct { ident: _, fields } in &parsed_structs {
+		for field in fields {
+			check_accessible_type(&accessible_types, &field.ident, &field.kind)?;
+		}
+	}
+
+	for ParsedRpcContainer { procedures } in &parsed_rpc_containers {
+		for proc in procedures {
+			for param in &proc.params {
+				check_accessible_type(&accessible_types, &param.ident, &param.kind)?;
+			}
 		}
 	}
 

@@ -6,6 +6,12 @@ enum Action {
 
 struct File {
     path->@string;
+    something->FileSomething;
+}
+
+enum FileSomething {
+    A->1;
+    B->9;
 }
 
 rpc {
