@@ -50,14 +50,7 @@ fn main() {
 		return;
 	}
 
-	for ele in &parser.rpc_containers {
-		for ele in &ele.procedures {
-			dbg!(&ele.return_kind);
-		}
-	}
-	// dbg!(&parser.rpc_containers);
-
-	let verifier_err = print_err(src, verify_parser_outputs(parser));
+	let verifier_err = print_err(src, verify_parser_outputs(&parser));
 	if verifier_err {
 		println!("exited with verifier err");
 	}

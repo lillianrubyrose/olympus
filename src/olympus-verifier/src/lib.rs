@@ -121,7 +121,7 @@ pub fn verify_parser_outputs(
 		structs: parsed_structs,
 		rpc_containers: parsed_rpc_containers,
 		..
-	}: Parser,
+	}: &Parser,
 ) -> Result<(), OlympusError> {
 	let accessible_types = parsed_enums
 		.iter()
@@ -137,15 +137,30 @@ pub fn verify_parser_outputs(
 			.label("Duplicate here", dup_ident.span, ErrorColor::Red));
 	}
 
-	for ParsedEnum { ident: _, variants } in &parsed_enums {
+	for ParsedEnum { ident: _, variants } in parsed_enums {
 		find_enum_variant_duplicates(variants)?;
 	}
 
-	for ParsedStruct { ident: _, fields } in &parsed_structs {
+	for ParsedStruct {
+		ident: struct_ident,
+		fields,
+	} in parsed_structs
+	{
 		find_struct_field_duplicates(fields)?;
+
+		for field in fields {
+			if let ParsedTypeKind::External(external) = &field.kind {
+				if &struct_ident.value == external {
+					return Err(OlympusError::error(
+						"Self referencing field type",
+						field.ident.span.clone(),
+					));
+				}
+			}
+		}
 	}
 
-	for ParsedRpcContainer { procedures } in &parsed_rpc_containers {
+	for ParsedRpcContainer { procedures } in parsed_rpc_containers {
 		find_rpc_procedure_duplicates(procedures)?;
 		for proc in procedures {
 			find_rpc_procedure_param_duplicates(&proc.params)?;
@@ -154,13 +169,13 @@ pub fn verify_parser_outputs(
 
 	// checking that types are actually there
 
-	for ParsedStruct { ident: _, fields } in &parsed_structs {
+	for ParsedStruct { ident: _, fields } in parsed_structs {
 		for field in fields {
 			check_accessible_type(&accessible_types, &field.ident, &field.kind)?;
 		}
 	}
 
-	for ParsedRpcContainer { procedures } in &parsed_rpc_containers {
+	for ParsedRpcContainer { procedures } in parsed_rpc_containers {
 		for proc in procedures {
 			for param in &proc.params {
 				check_accessible_type(&accessible_types, &param.ident, &param.kind)?;
