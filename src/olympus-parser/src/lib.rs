@@ -20,7 +20,7 @@ pub enum ParsedBultin {
 	Int(IntToken),
 	VariableInt(IntToken),
 	String,
-	Array(Box<ParsedTypeKind>),
+	Array(Box<Spanned<ParsedTypeKind>>),
 }
 
 #[derive(Debug)]
@@ -32,7 +32,7 @@ pub enum ParsedTypeKind {
 #[derive(Debug)]
 pub struct ParsedStructField {
 	pub ident: Spanned<String>,
-	pub kind: ParsedTypeKind,
+	pub kind: Spanned<ParsedTypeKind>,
 }
 
 #[derive(Debug)]
@@ -44,14 +44,14 @@ pub struct ParsedStruct {
 #[derive(Debug)]
 pub struct ParsedProcedureParam {
 	pub ident: Spanned<String>,
-	pub kind: ParsedTypeKind,
+	pub kind: Spanned<ParsedTypeKind>,
 }
 
 #[derive(Debug)]
 pub struct ParsedProcedure {
 	pub ident: Spanned<String>,
 	pub params: Vec<ParsedProcedureParam>,
-	pub return_kind: ParsedTypeKind,
+	pub return_kind: Spanned<ParsedTypeKind>,
 }
 
 #[derive(Debug)]
@@ -207,9 +207,10 @@ impl Parser {
 		))?;
 
 		let value = match array_type.value {
-			Token::Ident(ident) => Ok(ParsedTypeKind::Builtin(ParsedBultin::Array(Box::new(
+			Token::Ident(ident) => Ok(ParsedTypeKind::Builtin(ParsedBultin::Array(Box::new(Spanned::new(
 				ParsedTypeKind::External(ident),
-			)))),
+				array_type.span,
+			))))),
 			Token::Type(ty) => match ty {
 				TypeToken::Int(v) => {
 					self.pop_must_match(
@@ -232,9 +233,10 @@ impl Parser {
 					)?;
 					Ok(ParsedTypeKind::Builtin(ParsedBultin::String))
 				}
-				TypeToken::Array => Ok(ParsedTypeKind::Builtin(ParsedBultin::Array(Box::new(
+				TypeToken::Array => Ok(ParsedTypeKind::Builtin(ParsedBultin::Array(Box::new(Spanned::new(
 					self.parse_array_type()?,
-				)))),
+					array_type.span,
+				))))),
 			},
 			_ => Err(OlympusError::error("Expected type", self.get_span(0))),
 		}?;
@@ -247,14 +249,29 @@ impl Parser {
 		Ok(value)
 	}
 
-	fn parse_type(&mut self, kind_token: Token) -> Result<ParsedTypeKind, OlympusError> {
-		let array_type = match kind_token {
-			Token::Ident(ident) => return Ok(ParsedTypeKind::External(ident)),
+	fn parse_type(&mut self, kind_token: Spanned<Token>) -> Result<Spanned<ParsedTypeKind>, OlympusError> {
+		let array_type = match kind_token.value {
+			Token::Ident(ident) => return Ok(Spanned::new(ParsedTypeKind::External(ident), kind_token.span)),
 			Token::Type(ty) => match ty {
-				TypeToken::Int(v) => return Ok(ParsedTypeKind::Builtin(ParsedBultin::Int(v))),
-				TypeToken::VariableInt(v) => return Ok(ParsedTypeKind::Builtin(ParsedBultin::VariableInt(v))),
-				TypeToken::String => return Ok(ParsedTypeKind::Builtin(ParsedBultin::String)),
-				TypeToken::Array => self.parse_array_type()?,
+				TypeToken::Int(v) => {
+					return Ok(Spanned::new(
+						ParsedTypeKind::Builtin(ParsedBultin::Int(v)),
+						kind_token.span,
+					))
+				}
+				TypeToken::VariableInt(v) => {
+					return Ok(Spanned::new(
+						ParsedTypeKind::Builtin(ParsedBultin::VariableInt(v)),
+						kind_token.span,
+					))
+				}
+				TypeToken::String => {
+					return Ok(Spanned::new(
+						ParsedTypeKind::Builtin(ParsedBultin::String),
+						kind_token.span,
+					))
+				}
+				TypeToken::Array => Spanned::new(self.parse_array_type()?, kind_token.span),
 			},
 			_ => return Err(OlympusError::error("Expected type", self.get_span(0))),
 		};
@@ -273,7 +290,7 @@ impl Parser {
 					let kind = self
 						.pop()
 						.ok_or(OlympusError::error("Expected type", self.get_span(0)))?;
-					let kind = self.parse_type(kind.value)?;
+					let kind = self.parse_type(kind)?;
 
 					self.pop_must_match(
 						|t| matches!(t, Token::Ascii(AsciiToken::SemiColon)),
@@ -335,7 +352,7 @@ impl Parser {
 								let kind = self
 									.pop()
 									.ok_or(OlympusError::error("Expected type", self.get_span(0)))?;
-								let kind = self.parse_type(kind.value)?;
+								let kind = self.parse_type(kind)?;
 
 								params.push(ParsedProcedureParam {
 									ident: Spanned::new(ident, token.span),
@@ -358,7 +375,7 @@ impl Parser {
 					let return_kind = self
 						.pop()
 						.ok_or(OlympusError::error("Expected type", self.get_span(0)))?;
-					let return_kind = self.parse_type(return_kind.value)?;
+					let return_kind = self.parse_type(return_kind)?;
 
 					self.pop_must_match(
 						|t| matches!(t, Token::Ascii(AsciiToken::SemiColon)),

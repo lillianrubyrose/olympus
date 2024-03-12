@@ -98,18 +98,25 @@ fn find_rpc_procedure_param_duplicates(params: &[ParsedProcedureParam]) -> Resul
 
 fn check_accessible_type(
 	accessible_types: &[Spanned<String>],
-	ident: &Spanned<String>,
-	asking_for: &ParsedTypeKind,
+	asking_for: &Spanned<ParsedTypeKind>,
 ) -> Result<(), OlympusError> {
-	if let ParsedTypeKind::External(external) = asking_for {
+	if let Spanned {
+		value: ParsedTypeKind::External(external),
+		span,
+	} = asking_for
+	{
 		if !accessible_types.iter().any(|t| external == &t.value) {
 			return Err(OlympusError::error(
 				&format!("Type '{external}' not found"),
-				ident.span.clone(),
+				span.clone(),
 			));
 		}
-	} else if let ParsedTypeKind::Builtin(ParsedBultin::Array(ty)) = asking_for {
-		check_accessible_type(accessible_types, ident, ty)?;
+	} else if let Spanned {
+		value: ParsedTypeKind::Builtin(ParsedBultin::Array(ty)),
+		..
+	} = asking_for
+	{
+		check_accessible_type(accessible_types, ty)?;
 	}
 
 	Ok(())
@@ -149,12 +156,13 @@ pub fn verify_parser_outputs(
 		find_struct_field_duplicates(fields)?;
 
 		for field in fields {
-			if let ParsedTypeKind::External(external) = &field.kind {
+			if let Spanned {
+				value: ParsedTypeKind::External(external),
+				span,
+			} = &field.kind
+			{
 				if &struct_ident.value == external {
-					return Err(OlympusError::error(
-						"Self referencing field type",
-						field.ident.span.clone(),
-					));
+					return Err(OlympusError::error("Self referencing field type", span.clone()));
 				}
 			}
 		}
@@ -171,17 +179,17 @@ pub fn verify_parser_outputs(
 
 	for ParsedStruct { ident: _, fields } in parsed_structs {
 		for field in fields {
-			check_accessible_type(&accessible_types, &field.ident, &field.kind)?;
+			check_accessible_type(&accessible_types, &field.kind)?;
 		}
 	}
 
 	for ParsedRpcContainer { procedures } in parsed_rpc_containers {
 		for proc in procedures {
 			for param in &proc.params {
-				check_accessible_type(&accessible_types, &param.ident, &param.kind)?;
+				check_accessible_type(&accessible_types, &param.kind)?;
 			}
 
-			check_accessible_type(&accessible_types, &proc.ident, &proc.return_kind)?;
+			check_accessible_type(&accessible_types, &proc.return_kind)?;
 		}
 	}
 
