@@ -212,27 +212,18 @@ impl Parser {
 				array_type.span,
 			))))),
 			Token::Type(ty) => match ty {
-				TypeToken::Int(v) => {
-					self.pop_must_match(
-						|t| matches!(t, Token::Ascii(AsciiToken::CloseBracket)),
-						"Expected ']' after array type",
-					)?;
-					Ok(ParsedTypeKind::Builtin(ParsedBultin::Int(v)))
-				}
-				TypeToken::VariableInt(v) => {
-					self.pop_must_match(
-						|t| matches!(t, Token::Ascii(AsciiToken::CloseBracket)),
-						"Expected ']' after array type",
-					)?;
-					Ok(ParsedTypeKind::Builtin(ParsedBultin::VariableInt(v)))
-				}
-				TypeToken::String => {
-					self.pop_must_match(
-						|t| matches!(t, Token::Ascii(AsciiToken::CloseBracket)),
-						"Expected ']' after array type",
-					)?;
-					Ok(ParsedTypeKind::Builtin(ParsedBultin::String))
-				}
+				TypeToken::Int(v) => Ok(ParsedTypeKind::Builtin(ParsedBultin::Array(Box::new(Spanned::new(
+					ParsedTypeKind::Builtin(ParsedBultin::Int(v)),
+					array_type.span,
+				))))),
+				TypeToken::VariableInt(v) => Ok(ParsedTypeKind::Builtin(ParsedBultin::Array(Box::new(Spanned::new(
+					ParsedTypeKind::Builtin(ParsedBultin::VariableInt(v)),
+					array_type.span,
+				))))),
+				TypeToken::String => Ok(ParsedTypeKind::Builtin(ParsedBultin::Array(Box::new(Spanned::new(
+					ParsedTypeKind::Builtin(ParsedBultin::String),
+					array_type.span,
+				))))),
 				TypeToken::Array => Ok(ParsedTypeKind::Builtin(ParsedBultin::Array(Box::new(Spanned::new(
 					self.parse_array_type()?,
 					array_type.span,
