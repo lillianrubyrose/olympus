@@ -1,0 +1,16 @@
+[package]
+name = "olympus-server-poc"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+async-trait = "0.1.77"
+eyre = "0.6.12"
+futures = "0.3.30"
+tokio = { version = "1.36.0", features = ["full"] }
+
+[lints]
+workspace = true
