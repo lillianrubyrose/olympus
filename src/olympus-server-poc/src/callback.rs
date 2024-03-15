@@ -11,10 +11,11 @@ pub trait CallbackOutput {
 }
 
 #[async_trait]
-pub trait Callback<Ctx> {
+pub trait Callback<Ctx>: Send + Sync {
 	async fn call<'a>(&'a self, context: Ctx, input: &'a [u8]) -> Vec<u8>;
 }
 
+#[derive(Clone)]
 pub struct CallbackHolder<F, T>(F, PhantomData<T>);
 
 impl<F, T> CallbackHolder<F, T> {
