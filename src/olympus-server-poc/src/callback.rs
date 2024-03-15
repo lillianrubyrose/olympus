@@ -11,8 +11,8 @@ pub trait CallbackOutput {
 }
 
 #[async_trait]
-pub trait Callback {
-	async fn call<'a>(&'a self, input: &'a [u8]) -> Vec<u8>;
+pub trait Callback<Ctx> {
+	async fn call<'a>(&'a self, context: Ctx, input: &'a [u8]) -> Vec<u8>;
 }
 
 pub struct CallbackHolder<F, T>(F, PhantomData<T>);
@@ -24,14 +24,15 @@ impl<F, T> CallbackHolder<F, T> {
 }
 
 #[async_trait]
-impl<F, Fut, Res, I> Callback for CallbackHolder<F, I>
+impl<Ctx, F, Fut, Res, I> Callback<Ctx> for CallbackHolder<F, I>
 where
-	F: Fn(I) -> Fut + Clone + Send + Sync + 'static,
+	Ctx: Send + Sync + 'static,
+	F: Fn(Ctx, I) -> Fut + Clone + Send + Sync + 'static,
 	Fut: Future<Output = Res> + Send,
 	Res: CallbackOutput,
 	I: CallbackInput + Send + Sync,
 {
-	async fn call<'a>(&'a self, input: &'a [u8]) -> Vec<u8> {
-		self.0(I::deserialize(input)).await.serialize()
+	async fn call<'a>(&'a self, context: Ctx, input: &'a [u8]) -> Vec<u8> {
+		self.0(context, I::deserialize(input)).await.serialize()
 	}
 }

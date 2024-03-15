@@ -13,12 +13,12 @@ where
 	Ctx: Clone,
 {
 	context: Ctx,
-	handlers: HashMap<u64, Box<dyn Callback>>,
+	handlers: HashMap<u64, Box<dyn Callback<Ctx>>>,
 }
 
 impl<Ctx> OlympusServer<Ctx>
 where
-	Ctx: Clone,
+	Ctx: Clone + Send + Sync + 'static,
 {
 	pub fn new(context: Ctx) -> Self {
 		Self {
@@ -31,7 +31,7 @@ where
 	// i have spent far too long on this already!
 	pub fn register_callback<F, Fut, Res, I>(&mut self, endpoint: &str, callback: F)
 	where
-		F: Fn(I) -> Fut + Clone + Send + Sync + 'static,
+		F: Fn(Ctx, I) -> Fut + Clone + Send + Sync + 'static,
 		Fut: Future<Output = Res> + Send + Sync,
 		Res: CallbackOutput,
 		I: CallbackInput + Send + Sync + 'static,
@@ -42,15 +42,17 @@ where
 
 	pub async fn run_callback(&mut self, endpoint: &str, input: &[u8]) -> Vec<u8> {
 		let callback = self.handlers.get(&fnv(endpoint)).unwrap();
-		callback.call(input).await
+		callback.call(self.context.clone(), input).await
 	}
 }
 
-async fn handler(input: String) {
+type Context = ();
+
+async fn handler((): Context, input: String) {
 	println!("{input}");
 }
 
-async fn handler2((): ()) -> usize {
+async fn handler2((): Context, (): ()) -> usize {
 	1
 }
 
