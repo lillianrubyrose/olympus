@@ -1,8 +1,7 @@
-mod callback;
-mod callback_ext;
+pub mod callback;
+pub mod callback_ext;
 mod codec;
 mod fnv;
-mod models;
 
 use std::{
 	collections::{HashMap, HashSet},
@@ -24,7 +23,7 @@ use tokio_util::codec::{FramedRead, FramedWrite};
 type ArcMut<T> = Arc<Mutex<T>>;
 type HandlersMap<Ctx> = HashMap<u64, (Box<dyn Callback<Ctx>>, &'static str)>;
 
-struct OlympusServer<Ctx>
+pub struct OlympusServer<Ctx>
 where
 	Ctx: Clone + Send + Sync,
 {
@@ -132,25 +131,4 @@ where
 		let (callback, endpoint_name) = callback.get(&endpoint_hash)?;
 		Some((callback.call(context, input).await, endpoint_name))
 	}
-}
-
-type Context = ();
-
-async fn printer_callback((): Context, input: String) {
-	println!("{input}");
-}
-
-async fn return_str_callback((): Context, (): ()) -> String {
-	"OLYMPUS".into()
-}
-
-#[tokio::main]
-async fn main() -> eyre::Result<()> {
-	let mut server = OlympusServer::new(());
-	server.register_callback("sample", printer_callback).await;
-	server.register_callback("sample:ret", return_str_callback).await;
-
-	println!("Listening @ tcp://127.0.0.1:9999");
-	server.run("127.0.0.1:9999".parse()?).await?;
-	Ok(())
 }

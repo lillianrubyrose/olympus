@@ -1,13 +1,8 @@
 [package]
-name = "olympus-server-poc"
+name = "olympus-server"
 edition.workspace = true
 version.workspace = true
 publish.workspace = true
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[lib]
-path = "src/lib.rs"
 
 [dependencies]
 async-trait = "0.1.77"

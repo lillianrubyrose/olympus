@@ -72,7 +72,7 @@ fn output_rust_models(
 
 		enum_declaration.push_str(&format!("#[repr(i16)]\npub enum {} {{\n", &r#enum.ident.value));
 		input_impl.push_str(&format!(
-			"impl crate::callback::CallbackInput for {} {{\n",
+			"impl ::olympus_server::callback::CallbackInput for {} {{\n",
 			&r#enum.ident.value
 		));
 		input_impl.push_str("\tfn deserialize(input: &mut ::bytes::BytesMut) -> Self {\n");
@@ -81,7 +81,7 @@ fn output_rust_models(
 		input_impl.push_str("\t\tmatch tag {\n");
 
 		output_impl.push_str(&format!(
-			"impl crate::callback::CallbackOutput for {} {{\n",
+			"impl ::olympus_server::callback::CallbackOutput for {} {{\n",
 			&r#enum.ident.value
 		));
 		output_impl.push_str("\tfn serialize(self) -> ::bytes::BytesMut {\n");
@@ -113,14 +113,14 @@ fn output_rust_models(
 		struct_declaration.push_str(&format!("pub struct {} {{\n", &strukt.ident.value));
 
 		input_impl.push_str(&format!(
-			"impl crate::callback::CallbackInput for {} {{\n",
+			"impl ::olympus_server::callback::CallbackInput for {} {{\n",
 			&strukt.ident.value
 		));
 		input_impl.push_str("\tfn deserialize(input: &mut ::bytes::BytesMut) -> Self {\n");
 		input_impl.push_str("\t\tSelf {\n");
 
 		output_impl.push_str(&format!(
-			"impl crate::callback::CallbackOutput for {} {{\n",
+			"impl ::olympus_server::callback::CallbackOutput for {} {{\n",
 			&strukt.ident.value
 		));
 		output_impl.push_str("\tfn serialize(self) -> ::bytes::BytesMut {\n");
@@ -134,7 +134,7 @@ fn output_rust_models(
 			));
 
 			input_impl.push_str(&format!(
-				"\t\t\t{}: crate::callback::CallbackInput::deserialize(input),\n",
+				"\t\t\t{}: ::olympus_server::callback::CallbackInput::deserialize(input),\n",
 				&field.ident.value
 			));
 			output_impl.push_str(&format!("\t\tout.extend(self.{}.serialize());\n", field.ident.value));
