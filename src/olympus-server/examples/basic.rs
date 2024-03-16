@@ -2,19 +2,15 @@ use olympus_server::OlympusServer;
 
 type Context = ();
 
-async fn printer_callback((): Context, input: String) {
-	println!("{input}");
-}
-
-async fn return_str_callback((): Context, (): ()) -> String {
-	"OLYMPUS".into()
+async fn save_file((): Context, file: crate::File) -> bool {
+	println!("{file:?}");
+	true
 }
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
 	let mut server = OlympusServer::new(());
-	server.register_callback("sample", printer_callback).await;
-	server.register_callback("sample:ret", return_str_callback).await;
+	server.register_callback("file", save_file).await;
 
 	println!("Listening @ tcp://127.0.0.1:9999");
 	server.run("127.0.0.1:9999".parse()?).await?;
@@ -52,6 +48,7 @@ impl ::olympus_server::callback::CallbackOutput for Action {
 	}
 }
 
+#[derive(Debug, Clone)]
 pub struct File {
 	pub path: String,
 	pub content: Vec<u8>,

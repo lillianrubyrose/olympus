@@ -2,7 +2,13 @@ use std::mem::size_of;
 
 use bytes::{Buf, BufMut, BytesMut};
 
-use crate::callback::{CallbackInput, CallbackOutput};
+pub trait CallbackInput {
+	fn deserialize(input: &mut BytesMut) -> Self;
+}
+
+pub trait CallbackOutput {
+	fn serialize(self) -> BytesMut;
+}
 
 impl CallbackInput for String {
 	fn deserialize(input: &mut BytesMut) -> Self {
@@ -13,7 +19,10 @@ impl CallbackInput for String {
 
 impl CallbackOutput for String {
 	fn serialize(self) -> BytesMut {
-		BytesMut::from_iter(self.into_bytes())
+		let mut out = BytesMut::with_capacity(size_of::<u32>() + self.len());
+		out.put_u32(self.len() as u32);
+		out.extend(self.into_bytes());
+		out
 	}
 }
 
@@ -47,6 +56,20 @@ impl<T: CallbackOutput> CallbackOutput for Vec<T> {
 			buf.extend(ele.serialize());
 		}
 		buf
+	}
+}
+
+impl CallbackInput for bool {
+	fn deserialize(input: &mut BytesMut) -> Self {
+		input.get_u8() != 0
+	}
+}
+
+impl CallbackOutput for bool {
+	fn serialize(self) -> BytesMut {
+		let mut out = BytesMut::with_capacity(1);
+		out.put_u8(u8::from(self));
+		out
 	}
 }
 

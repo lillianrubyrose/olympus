@@ -2,14 +2,7 @@ use std::{future::Future, marker::PhantomData};
 
 use async_trait::async_trait;
 use bytes::BytesMut;
-
-pub trait CallbackInput {
-	fn deserialize(input: &mut BytesMut) -> Self;
-}
-
-pub trait CallbackOutput {
-	fn serialize(self) -> BytesMut;
-}
+pub use olympus_net_common::{CallbackInput, CallbackOutput};
 
 #[async_trait]
 pub trait Callback<Ctx>: Send + Sync {

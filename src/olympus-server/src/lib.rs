@@ -1,5 +1,4 @@
 pub mod callback;
-pub mod callback_ext;
 mod codec;
 mod fnv;
 
@@ -10,10 +9,11 @@ use std::{
 };
 
 use bytes::{Buf, BytesMut};
-use callback::{Callback, CallbackHolder, CallbackInput, CallbackOutput};
+use callback::{Callback, CallbackHolder};
 use codec::OlympusPacketCodec;
 use fnv::fnv;
 use futures::{Future, SinkExt, StreamExt};
+use olympus_net_common::{CallbackInput, CallbackOutput};
 use tokio::{
 	net::{TcpListener, TcpStream},
 	sync::Mutex,

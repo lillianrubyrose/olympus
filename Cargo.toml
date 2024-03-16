@@ -20,6 +20,7 @@ olympus-common = { path = "src/olympus-common" }
 olympus-lexer = { path = "src/olympus-lexer" }
 olympus-parser = { path = "src/olympus-parser" }
 olympus-verifier = { path = "src/olympus-verifier" }
+olympus-net-common = { path = "src/olympus-net-common" }
 
 ariadne = "0.4"
 unicode-segmentation = "1.11"
