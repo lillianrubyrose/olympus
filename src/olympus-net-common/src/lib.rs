@@ -1,11 +1,11 @@
 mod codec;
-mod proc;
 mod fnv;
+mod proc;
 
 pub mod bytes {
 	pub use bytes::*;
 }
 
 pub use codec::*;
-pub use proc::*;
 pub use fnv::*;
+pub use proc::*;

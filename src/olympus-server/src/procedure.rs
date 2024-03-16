@@ -1,7 +1,7 @@
 use std::{future::Future, marker::PhantomData};
 
 use async_trait::async_trait;
-pub use olympus_net_common::{ProcedureInput, ProcedureOutput, bytes::BytesMut};
+pub use olympus_net_common::{bytes::BytesMut, ProcedureInput, ProcedureOutput};
 
 #[async_trait]
 pub trait Procedure<Ctx>: Send + Sync {

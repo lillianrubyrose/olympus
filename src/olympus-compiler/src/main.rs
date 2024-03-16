@@ -70,7 +70,10 @@ fn output_rust_models(
 		let mut input_impl = String::new();
 		let mut output_impl = String::new();
 
-		enum_declaration.push_str(&format!("#[repr(i16)]\n#[derive(Debug, Clone, Copy)]\npub enum {} {{\n", &r#enum.ident.value));
+		enum_declaration.push_str(&format!(
+			"#[repr(i16)]\n#[derive(Debug, Clone, Copy)]\npub enum {} {{\n",
+			&r#enum.ident.value
+		));
 		input_impl.push_str(&format!(
 			"impl ::olympus_net_common::ProcedureInput for {} {{\n",
 			&r#enum.ident.value
@@ -86,7 +89,9 @@ fn output_rust_models(
 		));
 		output_impl.push_str("\tfn serialize(self) -> ::olympus_net_common::bytes::BytesMut {\n");
 		output_impl.push_str("\t\tuse ::olympus_net_common::bytes::BufMut;\n");
-		output_impl.push_str("\t\tlet mut out = ::olympus_net_common::bytes::BytesMut::with_capacity(::std::mem::size_of::<u16>());\n");
+		output_impl.push_str(
+			"\t\tlet mut out = ::olympus_net_common::bytes::BytesMut::with_capacity(::std::mem::size_of::<u16>());\n",
+		);
 		output_impl.push_str("\t\tout.put_u16(self as _);\n");
 		output_impl.push_str("\t\tout\n");
 
@@ -110,7 +115,10 @@ fn output_rust_models(
 		let mut input_impl = String::new();
 		let mut output_impl = String::new();
 
-		struct_declaration.push_str(&format!("#[derive(Debug, Clone)]\npub struct {} {{\n", &strukt.ident.value));
+		struct_declaration.push_str(&format!(
+			"#[derive(Debug, Clone)]\npub struct {} {{\n",
+			&strukt.ident.value
+		));
 
 		input_impl.push_str(&format!(
 			"impl ::olympus_net_common::ProcedureInput for {} {{\n",
