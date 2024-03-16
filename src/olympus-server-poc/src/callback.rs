@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use bytes::BytesMut;
 
 pub trait CallbackInput {
-	fn deserialize(input: BytesMut) -> Self;
+	fn deserialize(input: &mut BytesMut) -> Self;
 }
 
 pub trait CallbackOutput {
@@ -34,7 +34,7 @@ where
 	Res: CallbackOutput,
 	I: CallbackInput + Send + Sync,
 {
-	async fn call(&self, context: Ctx, input: BytesMut) -> BytesMut {
-		self.0(context, I::deserialize(input)).await.serialize()
+	async fn call(&self, context: Ctx, mut input: BytesMut) -> BytesMut {
+		self.0(context, I::deserialize(&mut input)).await.serialize()
 	}
 }
