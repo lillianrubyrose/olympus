@@ -70,23 +70,23 @@ fn output_rust_models(
 		let mut input_impl = String::new();
 		let mut output_impl = String::new();
 
-		enum_declaration.push_str(&format!("#[repr(i16)]\npub enum {} {{\n", &r#enum.ident.value));
+		enum_declaration.push_str(&format!("#[repr(i16)]\n#[derive(Debug, Clone, Copy)]\npub enum {} {{\n", &r#enum.ident.value));
 		input_impl.push_str(&format!(
-			"impl ::olympus_server::callback::CallbackInput for {} {{\n",
+			"impl ::olympus_net_common::ProcedureInput for {} {{\n",
 			&r#enum.ident.value
 		));
-		input_impl.push_str("\tfn deserialize(input: &mut ::bytes::BytesMut) -> Self {\n");
-		input_impl.push_str("\t\tuse ::bytes::Buf;\n");
+		input_impl.push_str("\tfn deserialize(input: &mut ::olympus_net_common::bytes::BytesMut) -> Self {\n");
+		input_impl.push_str("\t\tuse ::olympus_net_common::bytes::Buf;\n");
 		input_impl.push_str("\t\tlet tag = input.get_u16();\n");
 		input_impl.push_str("\t\tmatch tag {\n");
 
 		output_impl.push_str(&format!(
-			"impl ::olympus_server::callback::CallbackOutput for {} {{\n",
+			"impl ::olympus_net_common::ProcedureOutput for {} {{\n",
 			&r#enum.ident.value
 		));
-		output_impl.push_str("\tfn serialize(self) -> ::bytes::BytesMut {\n");
-		output_impl.push_str("\t\tuse ::bytes::BufMut;\n");
-		output_impl.push_str("\t\tlet mut out = ::bytes::BytesMut::with_capacity(::std::mem::size_of::<u16>());\n");
+		output_impl.push_str("\tfn serialize(self) -> ::olympus_net_common::bytes::BytesMut {\n");
+		output_impl.push_str("\t\tuse ::olympus_net_common::bytes::BufMut;\n");
+		output_impl.push_str("\t\tlet mut out = ::olympus_net_common::bytes::BytesMut::with_capacity(::std::mem::size_of::<u16>());\n");
 		output_impl.push_str("\t\tout.put_u16(self as _);\n");
 		output_impl.push_str("\t\tout\n");
 
@@ -110,21 +110,21 @@ fn output_rust_models(
 		let mut input_impl = String::new();
 		let mut output_impl = String::new();
 
-		struct_declaration.push_str(&format!("pub struct {} {{\n", &strukt.ident.value));
+		struct_declaration.push_str(&format!("#[derive(Debug, Clone)]\npub struct {} {{\n", &strukt.ident.value));
 
 		input_impl.push_str(&format!(
-			"impl ::olympus_server::callback::CallbackInput for {} {{\n",
+			"impl ::olympus_net_common::ProcedureInput for {} {{\n",
 			&strukt.ident.value
 		));
-		input_impl.push_str("\tfn deserialize(input: &mut ::bytes::BytesMut) -> Self {\n");
+		input_impl.push_str("\tfn deserialize(input: &mut ::olympus_net_common::bytes::BytesMut) -> Self {\n");
 		input_impl.push_str("\t\tSelf {\n");
 
 		output_impl.push_str(&format!(
-			"impl ::olympus_server::callback::CallbackOutput for {} {{\n",
+			"impl ::olympus_net_common::ProcedureOutput for {} {{\n",
 			&strukt.ident.value
 		));
-		output_impl.push_str("\tfn serialize(self) -> ::bytes::BytesMut {\n");
-		output_impl.push_str("\t\tlet mut out = ::bytes::BytesMut::new();\n");
+		output_impl.push_str("\tfn serialize(self) -> ::olympus_net_common::bytes::BytesMut {\n");
+		output_impl.push_str("\t\tlet mut out = ::olympus_net_common::bytes::BytesMut::new();\n");
 
 		for field in &strukt.fields {
 			struct_declaration.push_str(&format!(
@@ -134,7 +134,7 @@ fn output_rust_models(
 			));
 
 			input_impl.push_str(&format!(
-				"\t\t\t{}: ::olympus_server::callback::CallbackInput::deserialize(input),\n",
+				"\t\t\t{}: ::olympus_net_common::ProcedureInput::deserialize(input),\n",
 				&field.ident.value
 			));
 			output_impl.push_str(&format!("\t\tout.extend(self.{}.serialize());\n", field.ident.value));

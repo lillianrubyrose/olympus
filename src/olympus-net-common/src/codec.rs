@@ -1,7 +1,10 @@
 use std::mem::size_of;
 
-use bytes::{Buf, BufMut, BytesMut};
-use tokio_util::codec::{Decoder, Encoder};
+use crate::bytes::BytesMut;
+use tokio_util::{
+	bytes::{Buf, BufMut},
+	codec::{Decoder, Encoder},
+};
 
 enum OlympusPacketCodecState {
 	Header,
@@ -28,7 +31,7 @@ impl Decoder for OlympusPacketCodec {
 	type Item = BytesMut;
 	type Error = std::io::Error;
 
-	fn decode(&mut self, src: &mut bytes::BytesMut) -> Result<Option<Self::Item>, Self::Error> {
+	fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
 		let to_read = match self.state {
 			OlympusPacketCodecState::Header => {
 				if src.len() < size_of::<u32>() {
@@ -60,7 +63,7 @@ impl Encoder<BytesMut> for OlympusPacketCodec {
 
 	// aaaa clippy i dont care right now!
 	#[allow(clippy::cast_possible_truncation)]
-	fn encode(&mut self, item: BytesMut, dst: &mut bytes::BytesMut) -> Result<(), Self::Error> {
+	fn encode(&mut self, item: BytesMut, dst: &mut BytesMut) -> Result<(), Self::Error> {
 		let len = item.len() as u32;
 		assert!(len < Self::MAX_PACKET_SIZE, "packet too big");
 

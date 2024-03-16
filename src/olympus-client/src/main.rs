@@ -1,12 +1,10 @@
-mod codec;
-mod fnv;
 mod models;
 
-use bytes::{Buf, BufMut, BytesMut};
-use codec::OlympusPacketCodec;
-use fnv::fnv;
 use futures::{SinkExt, StreamExt};
-use olympus_net_common::CallbackOutput;
+use olympus_net_common::{
+	bytes::{Buf, BufMut, BytesMut},
+	fnv, OlympusPacketCodec, ProcedureOutput,
+};
 use tokio::net::TcpStream;
 use tokio_util::codec::{FramedRead, FramedWrite};
 
@@ -17,7 +15,7 @@ async fn main() -> eyre::Result<()> {
 	let mut framed_read = FramedRead::new(r, OlympusPacketCodec::default());
 	let mut framed_write = FramedWrite::new(w, OlympusPacketCodec::default());
 
-	let endpoint = fnv("file");
+	let procedure_hash = fnv("file");
 	let param = models::File {
 		path: "/home/lily/puppywoofwoof.txt".into(),
 		content: vec![13, 37],
@@ -25,7 +23,7 @@ async fn main() -> eyre::Result<()> {
 	.serialize();
 
 	let mut to_send = BytesMut::new();
-	to_send.put_u64(endpoint);
+	to_send.put_u64(procedure_hash);
 	to_send.extend(param);
 
 	framed_write.send(to_send).await?;

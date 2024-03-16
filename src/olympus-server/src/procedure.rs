@@ -1,31 +1,30 @@
 use std::{future::Future, marker::PhantomData};
 
 use async_trait::async_trait;
-use bytes::BytesMut;
-pub use olympus_net_common::{CallbackInput, CallbackOutput};
+pub use olympus_net_common::{ProcedureInput, ProcedureOutput, bytes::BytesMut};
 
 #[async_trait]
-pub trait Callback<Ctx>: Send + Sync {
+pub trait Procedure<Ctx>: Send + Sync {
 	async fn call(&self, context: Ctx, input: BytesMut) -> BytesMut;
 }
 
 #[derive(Clone)]
-pub struct CallbackHolder<F, T>(F, PhantomData<T>);
+pub struct ProcedureHolder<F, T>(F, PhantomData<T>);
 
-impl<F, T> CallbackHolder<F, T> {
-	pub fn new(callback: F) -> Self {
-		Self(callback, PhantomData)
+impl<F, T> ProcedureHolder<F, T> {
+	pub fn new(procedure: F) -> Self {
+		Self(procedure, PhantomData)
 	}
 }
 
 #[async_trait]
-impl<Ctx, F, Fut, Res, I> Callback<Ctx> for CallbackHolder<F, I>
+impl<Ctx, F, Fut, Res, I> Procedure<Ctx> for ProcedureHolder<F, I>
 where
 	Ctx: Send + Sync + 'static,
 	F: Fn(Ctx, I) -> Fut + Clone + Send + Sync + 'static,
 	Fut: Future<Output = Res> + Send,
-	Res: CallbackOutput,
-	I: CallbackInput + Send + Sync,
+	Res: ProcedureOutput,
+	I: ProcedureInput + Send + Sync,
 {
 	async fn call(&self, context: Ctx, mut input: BytesMut) -> BytesMut {
 		self.0(context, I::deserialize(&mut input)).await.serialize()

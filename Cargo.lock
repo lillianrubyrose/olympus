@@ -293,8 +293,6 @@ dependencies = [
 name = "olympus-client"
 version = "0.0.0"
 dependencies = [
- "async-trait",
- "bytes",
  "eyre",
  "futures",
  "olympus-net-common",
@@ -334,6 +332,7 @@ version = "0.0.0"
 dependencies = [
  "bytes",
  "paste",
+ "tokio-util",
 ]
 
 [[package]]
@@ -349,7 +348,6 @@ name = "olympus-server"
 version = "0.0.0"
 dependencies = [
  "async-trait",
- "bytes",
  "eyre",
  "futures",
  "lid",

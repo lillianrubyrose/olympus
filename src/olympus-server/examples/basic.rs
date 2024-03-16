@@ -10,7 +10,7 @@ async fn save_file((): Context, file: crate::File) -> bool {
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
 	let mut server = OlympusServer::new(());
-	server.register_callback("file", save_file).await;
+	server.register_procedure("file", save_file).await;
 
 	println!("Listening @ tcp://127.0.0.1:9999");
 	server.run("127.0.0.1:9999".parse()?).await?;
@@ -20,15 +20,16 @@ async fn main() -> eyre::Result<()> {
 // olympus-compiler output below:
 
 #[repr(i16)]
+#[derive(Debug, Clone, Copy)]
 pub enum Action {
 	Delete = 1,
 	SecureDelete = 2,
 	Encrypt = 3,
 }
 
-impl ::olympus_server::callback::CallbackInput for Action {
-	fn deserialize(input: &mut ::bytes::BytesMut) -> Self {
-		use ::bytes::Buf;
+impl ::olympus_net_common::ProcedureInput for Action {
+	fn deserialize(input: &mut ::olympus_net_common::bytes::BytesMut) -> Self {
+		use ::olympus_net_common::bytes::Buf;
 		let tag = input.get_u16();
 		match tag {
 			1 => Self::Delete,
@@ -39,10 +40,10 @@ impl ::olympus_server::callback::CallbackInput for Action {
 	}
 }
 
-impl ::olympus_server::callback::CallbackOutput for Action {
-	fn serialize(self) -> ::bytes::BytesMut {
-		use ::bytes::BufMut;
-		let mut out = ::bytes::BytesMut::with_capacity(::std::mem::size_of::<u16>());
+impl ::olympus_net_common::ProcedureOutput for Action {
+	fn serialize(self) -> ::olympus_net_common::bytes::BytesMut {
+		use ::olympus_net_common::bytes::BufMut;
+		let mut out = ::olympus_net_common::bytes::BytesMut::with_capacity(::std::mem::size_of::<u16>());
 		out.put_u16(self as _);
 		out
 	}
@@ -54,18 +55,18 @@ pub struct File {
 	pub content: Vec<u8>,
 }
 
-impl ::olympus_server::callback::CallbackInput for File {
-	fn deserialize(input: &mut ::bytes::BytesMut) -> Self {
+impl ::olympus_net_common::ProcedureInput for File {
+	fn deserialize(input: &mut ::olympus_net_common::bytes::BytesMut) -> Self {
 		Self {
-			path: ::olympus_server::callback::CallbackInput::deserialize(input),
-			content: ::olympus_server::callback::CallbackInput::deserialize(input),
+			path: ::olympus_net_common::ProcedureInput::deserialize(input),
+			content: ::olympus_net_common::ProcedureInput::deserialize(input),
 		}
 	}
 }
 
-impl ::olympus_server::callback::CallbackOutput for File {
-	fn serialize(self) -> ::bytes::BytesMut {
-		let mut out = ::bytes::BytesMut::new();
+impl ::olympus_net_common::ProcedureOutput for File {
+	fn serialize(self) -> ::olympus_net_common::bytes::BytesMut {
+		let mut out = ::olympus_net_common::bytes::BytesMut::new();
 		out.extend(self.path.serialize());
 		out.extend(self.content.serialize());
 		out
