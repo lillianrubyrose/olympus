@@ -9,11 +9,11 @@ use std::{
 	sync::Arc,
 };
 
-use bytes::Buf;
+use bytes::{Buf, BytesMut};
 use callback::{Callback, CallbackHolder, CallbackInput, CallbackOutput};
 use codec::OlympusPacketCodec;
 use fnv::fnv;
-use futures::{Future, StreamExt};
+use futures::{Future, SinkExt, StreamExt};
 use tokio::{
 	net::{TcpListener, TcpStream},
 	sync::Mutex,
@@ -98,7 +98,7 @@ where
 	) -> std::io::Result<()> {
 		let (r, w) = stream.into_split();
 		let mut framed_read = FramedRead::new(r, OlympusPacketCodec::default());
-		let mut _framed_write = FramedWrite::new(w, OlympusPacketCodec::default());
+		let mut framed_write = FramedWrite::new(w, OlympusPacketCodec::default());
 
 		while let Some(frame) = framed_read.next().await {
 			let mut frame = frame?;
@@ -107,6 +107,9 @@ where
 			match Self::run_callback(context.clone(), handlers.clone(), endpoint_hash, &frame).await {
 				Some((response, endpoint_name)) if !response.is_empty() => {
 					println!("callback '{endpoint_name}' has response");
+					let mut output = BytesMut::with_capacity(response.len());
+					output.extend_from_slice(&response);
+					framed_write.send(output).await?;
 				}
 				Some((_, endpoint_name)) => {
 					println!("callback '{endpoint_name}' has no response");
@@ -134,14 +137,19 @@ where
 
 type Context = ();
 
-async fn callback((): Context, input: String) {
+async fn printer_callback((): Context, input: String) {
 	println!("{input}");
+}
+
+async fn return_str_callback((): Context, (): ()) -> String {
+	"OLYMPUS".into()
 }
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
 	let mut server = OlympusServer::new(());
-	server.register_callback("sample", callback).await;
+	server.register_callback("sample", printer_callback).await;
+	server.register_callback("sample:ret", return_str_callback).await;
 
 	println!("Listening @ tcp://127.0.0.1:9999");
 	server.run("127.0.0.1:9999".parse()?).await?;

@@ -21,3 +21,9 @@ impl CallbackOutput for usize {
 		usize::to_be_bytes(self).to_vec()
 	}
 }
+
+impl CallbackOutput for String {
+	fn serialize(self) -> Vec<u8> {
+		self.into_bytes()
+	}
+}
