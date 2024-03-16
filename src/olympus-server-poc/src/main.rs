@@ -104,12 +104,10 @@ where
 			let mut frame = frame?;
 			let endpoint_hash = frame.get_u64();
 
-			match Self::run_callback(context.clone(), handlers.clone(), endpoint_hash, &frame).await {
+			match Self::run_callback(context.clone(), handlers.clone(), endpoint_hash, frame).await {
 				Some((response, endpoint_name)) if !response.is_empty() => {
 					println!("callback '{endpoint_name}' has response");
-					let mut output = BytesMut::with_capacity(response.len());
-					output.extend_from_slice(&response);
-					framed_write.send(output).await?;
+					framed_write.send(response).await?;
 				}
 				Some((_, endpoint_name)) => {
 					println!("callback '{endpoint_name}' has no response");
@@ -127,8 +125,8 @@ where
 		context: Ctx,
 		handlers: ArcMut<HandlersMap<Ctx>>,
 		endpoint_hash: u64,
-		input: &[u8],
-	) -> Option<(Vec<u8>, &'static str)> {
+		input: BytesMut,
+	) -> Option<(BytesMut, &'static str)> {
 		let callback = handlers.lock().await;
 		let (callback, endpoint_name) = callback.get(&endpoint_hash)?;
 		Some((callback.call(context, input).await, endpoint_name))

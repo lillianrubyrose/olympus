@@ -1,18 +1,19 @@
 use std::{future::Future, marker::PhantomData};
 
 use async_trait::async_trait;
+use bytes::BytesMut;
 
 pub trait CallbackInput {
-	fn deserialize(input: &[u8]) -> Self;
+	fn deserialize(input: BytesMut) -> Self;
 }
 
 pub trait CallbackOutput {
-	fn serialize(self) -> Vec<u8>;
+	fn serialize(self) -> BytesMut;
 }
 
 #[async_trait]
 pub trait Callback<Ctx>: Send + Sync {
-	async fn call<'a>(&'a self, context: Ctx, input: &'a [u8]) -> Vec<u8>;
+	async fn call(&self, context: Ctx, input: BytesMut) -> BytesMut;
 }
 
 #[derive(Clone)]
@@ -33,7 +34,7 @@ where
 	Res: CallbackOutput,
 	I: CallbackInput + Send + Sync,
 {
-	async fn call<'a>(&'a self, context: Ctx, input: &'a [u8]) -> Vec<u8> {
+	async fn call(&self, context: Ctx, input: BytesMut) -> BytesMut {
 		self.0(context, I::deserialize(input)).await.serialize()
 	}
 }
