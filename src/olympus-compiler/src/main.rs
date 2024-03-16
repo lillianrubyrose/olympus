@@ -54,6 +54,7 @@ fn output_rust_type(ty: &ParsedTypeKind) -> String {
 			ParsedBultin::VariableInt(int) => format!("::olympus_net_common::Variable<{}>", format_int(int)),
 			ParsedBultin::String => "String".to_string(),
 			ParsedBultin::Array(ty) => format!("Vec<{}>", output_rust_type(&ty.value)),
+			ParsedBultin::Option(ty) => format!("Option<{}>", output_rust_type(&ty.value)),
 		},
 		ParsedTypeKind::External(ident) => ident.to_string(),
 	}

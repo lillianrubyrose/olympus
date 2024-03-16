@@ -93,3 +93,24 @@ macro_rules! impl_for_nums {
 }
 
 impl_for_nums!(i8, u8, i16, u16, i32, u32, i64, u64, i128, u128);
+
+impl<T: ProcedureInput> ProcedureInput for Option<T> {
+	fn deserialize(input: &mut BytesMut) -> Self {
+		let present = input.get_u8();
+		if present == 0 {
+			return None;
+		}
+		Some(T::deserialize(input))
+	}
+}
+
+impl<T: ProcedureOutput> ProcedureOutput for Option<T> {
+	fn serialize(self) -> BytesMut {
+		let mut out = BytesMut::new();
+		out.put_u8(u8::from(self.is_some()));
+		if let Some(inner) = self {
+			out.extend(inner.serialize());
+		}
+		out
+	}
+}

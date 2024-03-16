@@ -59,6 +59,7 @@ pub enum TypeToken {
 	VariableInt(IntToken),
 	String,
 	Array,
+	Option,
 }
 
 impl From<TypeToken> for Token {
@@ -254,6 +255,7 @@ impl<'lex> Lexer<'lex> {
 
 						"string" => self.add(TypeToken::String, &start),
 						"array" => self.add(TypeToken::Array, &start),
+						"option" => self.add(TypeToken::Option, &start),
 
 						_ => return Err(OlympusError::error("Unrecognized builtin", self.get_span(&start))),
 					}

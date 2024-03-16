@@ -21,6 +21,7 @@ pub enum ParsedBultin {
 	VariableInt(IntToken),
 	String,
 	Array(Box<Spanned<ParsedTypeKind>>),
+	Option(Box<Spanned<ParsedTypeKind>>),
 }
 
 #[derive(Debug)]
@@ -195,46 +196,48 @@ impl Parser {
 		Ok(())
 	}
 
-	fn parse_array_type(&mut self) -> Result<ParsedTypeKind, OlympusError> {
+	fn parse_generic_type(&mut self) -> Result<Spanned<ParsedTypeKind>, OlympusError> {
+		let this_span = self.get_span(0);
+
 		self.pop_must_match(
 			|t| matches!(t, Token::Ascii(AsciiToken::OpenBracket)),
-			"Expected '[' after array",
+			"Expected generic type",
 		)?;
 
-		let array_type = self.pop().ok_or(OlympusError::error(
-			"Expected type after array declaration",
-			self.get_span(-1),
-		))?;
+		let array_type = self
+			.pop()
+			.ok_or(OlympusError::error("Expected generic type", self.get_span(-1)))?;
 
 		let value = match array_type.value {
-			Token::Ident(ident) => Ok(ParsedTypeKind::Builtin(ParsedBultin::Array(Box::new(Spanned::new(
-				ParsedTypeKind::External(ident),
-				array_type.span,
-			))))),
+			Token::Ident(ident) => Ok(Spanned::new(ParsedTypeKind::External(ident), array_type.span)),
 			Token::Type(ty) => match ty {
-				TypeToken::Int(v) => Ok(ParsedTypeKind::Builtin(ParsedBultin::Array(Box::new(Spanned::new(
+				TypeToken::Int(v) => Ok(Spanned::new(
 					ParsedTypeKind::Builtin(ParsedBultin::Int(v)),
 					array_type.span,
-				))))),
-				TypeToken::VariableInt(v) => Ok(ParsedTypeKind::Builtin(ParsedBultin::Array(Box::new(Spanned::new(
+				)),
+				TypeToken::VariableInt(v) => Ok(Spanned::new(
 					ParsedTypeKind::Builtin(ParsedBultin::VariableInt(v)),
 					array_type.span,
-				))))),
-				TypeToken::String => Ok(ParsedTypeKind::Builtin(ParsedBultin::Array(Box::new(Spanned::new(
+				)),
+				TypeToken::String => Ok(Spanned::new(
 					ParsedTypeKind::Builtin(ParsedBultin::String),
 					array_type.span,
-				))))),
-				TypeToken::Array => Ok(ParsedTypeKind::Builtin(ParsedBultin::Array(Box::new(Spanned::new(
-					self.parse_array_type()?,
-					array_type.span,
-				))))),
+				)),
+				TypeToken::Array => Ok(Spanned::new(
+					ParsedTypeKind::Builtin(ParsedBultin::Array(Box::new(self.parse_generic_type()?))),
+					this_span,
+				)),
+				TypeToken::Option => Ok(Spanned::new(
+					ParsedTypeKind::Builtin(ParsedBultin::Option(Box::new(self.parse_generic_type()?))),
+					this_span,
+				)),
 			},
 			_ => Err(OlympusError::error("Expected type", self.get_span(0))),
 		}?;
 
 		self.pop_must_match(
 			|t| matches!(t, Token::Ascii(AsciiToken::CloseBracket)),
-			"Expected ']' after array type",
+			"Expected ']' after generic type",
 		)?;
 
 		Ok(value)
@@ -262,7 +265,14 @@ impl Parser {
 						kind_token.span,
 					))
 				}
-				TypeToken::Array => Spanned::new(self.parse_array_type()?, kind_token.span),
+				TypeToken::Array => Spanned::new(
+					ParsedTypeKind::Builtin(ParsedBultin::Array(Box::new(self.parse_generic_type()?))),
+					kind_token.span,
+				),
+				TypeToken::Option => Spanned::new(
+					ParsedTypeKind::Builtin(ParsedBultin::Option(Box::new(self.parse_generic_type()?))),
+					kind_token.span,
+				),
 			},
 			_ => return Err(OlympusError::error("Expected type", self.get_span(0))),
 		};

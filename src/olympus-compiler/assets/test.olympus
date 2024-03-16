@@ -6,6 +6,7 @@ enum Action {
 
 struct File {
     path->@string;
+    extension->@option[@string];
     file_size->@varuint64;
     content->@array[@uint8];
 }
