@@ -1,7 +1,7 @@
 use ariadne::{sources, Label, Report};
 use olympus_common::OlympusError;
-use olympus_lexer::Lexer;
-use olympus_parser::{ParsedTypeKind, Parser};
+use olympus_lexer::{IntToken, Lexer};
+use olympus_parser::{ParsedBultin, ParsedTypeKind, Parser};
 use olympus_verifier::verify_parser_outputs;
 
 fn print_err<T>(src: &str, res: Result<T, OlympusError>) -> bool {
@@ -35,23 +35,27 @@ fn print_err<T>(src: &str, res: Result<T, OlympusError>) -> bool {
 }
 
 fn output_rust_type(ty: &ParsedTypeKind) -> String {
+	fn format_int(token: &IntToken) -> String {
+		match token {
+			IntToken::Int8 => "i8".to_string(),
+			IntToken::Int16 => "i16".to_string(),
+			IntToken::Int32 => "i32".to_string(),
+			IntToken::Int64 => "i64".to_string(),
+			IntToken::UInt8 => "u8".to_string(),
+			IntToken::UInt16 => "u16".to_string(),
+			IntToken::UInt32 => "u32".to_string(),
+			IntToken::UInt64 => "u64".to_string(),
+		}
+	}
+
 	match ty {
-		olympus_parser::ParsedTypeKind::Builtin(ty) => match ty {
-			olympus_parser::ParsedBultin::Int(int) => match int {
-				olympus_lexer::IntToken::Int8 => "i8".to_string(),
-				olympus_lexer::IntToken::Int16 => "i16".to_string(),
-				olympus_lexer::IntToken::Int32 => "i32".to_string(),
-				olympus_lexer::IntToken::Int64 => "i64".to_string(),
-				olympus_lexer::IntToken::UInt8 => "u8".to_string(),
-				olympus_lexer::IntToken::UInt16 => "u16".to_string(),
-				olympus_lexer::IntToken::UInt32 => "u32".to_string(),
-				olympus_lexer::IntToken::UInt64 => "u64".to_string(),
-			},
-			olympus_parser::ParsedBultin::VariableInt(_) => todo!("outputting varints isn't supported yet"),
-			olympus_parser::ParsedBultin::String => "String".to_string(),
-			olympus_parser::ParsedBultin::Array(ty) => format!("Vec<{}>", output_rust_type(&ty.value)),
+		ParsedTypeKind::Builtin(ty) => match ty {
+			ParsedBultin::Int(int) => format_int(int),
+			ParsedBultin::VariableInt(int) => format!("::olympus_net_common::Variable<{}>", format_int(int)),
+			ParsedBultin::String => "String".to_string(),
+			ParsedBultin::Array(ty) => format!("Vec<{}>", output_rust_type(&ty.value)),
 		},
-		olympus_parser::ParsedTypeKind::External(ident) => ident.to_string(),
+		ParsedTypeKind::External(ident) => ident.to_string(),
 	}
 }
 
