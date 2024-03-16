@@ -2,6 +2,7 @@ mod callback;
 mod callback_ext;
 mod codec;
 mod fnv;
+mod models;
 
 use std::{
 	collections::{HashMap, HashSet},

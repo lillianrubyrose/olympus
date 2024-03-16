@@ -66,29 +66,87 @@ fn output_rust_models(
 	let mut res = String::new();
 
 	for r#enum in enums {
-		let mut e = String::new();
-		e.push_str(&format!("#[repr(i16)]\nenum {} {{\n", &r#enum.ident.value));
-		for variant in &r#enum.variants {
-			e.push_str(&format!("\t{} = {},\n", &variant.ident.value, variant.value));
-		}
-		e.push_str("}\n\n");
+		let mut enum_declaration = String::new();
+		let mut input_impl = String::new();
+		let mut output_impl = String::new();
 
-		res.push_str(&e);
+		enum_declaration.push_str(&format!("#[repr(i16)]\npub enum {} {{\n", &r#enum.ident.value));
+		input_impl.push_str(&format!(
+			"impl crate::callback::CallbackInput for {} {{\n",
+			&r#enum.ident.value
+		));
+		input_impl.push_str("\tfn deserialize(input: &mut ::bytes::BytesMut) -> Self {\n");
+		input_impl.push_str("\t\tuse ::bytes::Buf;\n");
+		input_impl.push_str("\t\tlet tag = input.get_u16();\n");
+		input_impl.push_str("\t\tmatch tag {\n");
+
+		output_impl.push_str(&format!(
+			"impl crate::callback::CallbackOutput for {} {{\n",
+			&r#enum.ident.value
+		));
+		output_impl.push_str("\tfn serialize(self) -> ::bytes::BytesMut {\n");
+		output_impl.push_str("\t\tuse ::bytes::BufMut;\n");
+		output_impl.push_str("\t\tlet mut out = ::bytes::BytesMut::with_capacity(::std::mem::size_of::<u16>());\n");
+		output_impl.push_str("\t\tout.put_u16(self as _);\n");
+		output_impl.push_str("\t\tout\n");
+
+		for variant in &r#enum.variants {
+			enum_declaration.push_str(&format!("\t{} = {},\n", &variant.ident.value, variant.value));
+			input_impl.push_str(&format!("\t\t\t{} => Self::{},\n", variant.value, variant.ident.value));
+		}
+
+		enum_declaration.push_str("}\n\n");
+		input_impl.push_str("\t\t\t_ => panic!(\"invalid tag: {tag}\"),\n");
+		input_impl.push_str("\t\t}\n\t}\n}\n\n");
+		output_impl.push_str("\t}\n}\n\n");
+
+		res.push_str(&enum_declaration);
+		res.push_str(&input_impl);
+		res.push_str(&output_impl);
 	}
 
 	for strukt in structs {
-		let mut e = String::new();
-		e.push_str(&format!("struct {} {{\n", &strukt.ident.value));
+		let mut struct_declaration = String::new();
+		let mut input_impl = String::new();
+		let mut output_impl = String::new();
+
+		struct_declaration.push_str(&format!("pub struct {} {{\n", &strukt.ident.value));
+
+		input_impl.push_str(&format!(
+			"impl crate::callback::CallbackInput for {} {{\n",
+			&strukt.ident.value
+		));
+		input_impl.push_str("\tfn deserialize(input: &mut ::bytes::BytesMut) -> Self {\n");
+		input_impl.push_str("\t\tSelf {\n");
+
+		output_impl.push_str(&format!(
+			"impl crate::callback::CallbackOutput for {} {{\n",
+			&strukt.ident.value
+		));
+		output_impl.push_str("\tfn serialize(self) -> ::bytes::BytesMut {\n");
+		output_impl.push_str("\t\tlet mut out = ::bytes::BytesMut::new();\n");
+
 		for field in &strukt.fields {
-			e.push_str(&format!(
+			struct_declaration.push_str(&format!(
 				"\tpub {}: {},\n",
 				&field.ident.value,
 				output_rust_type(&field.kind.value)
 			));
-		}
-		e.push_str("}\n\n");
 
-		res.push_str(&e);
+			input_impl.push_str(&format!(
+				"\t\t\t{}: crate::callback::CallbackInput::deserialize(input),\n",
+				&field.ident.value
+			));
+			output_impl.push_str(&format!("\t\tout.extend(self.{}.serialize());\n", field.ident.value));
+		}
+
+		struct_declaration.push_str("}\n\n");
+		input_impl.push_str("\t\t}\n\t}\n}\n\n");
+		output_impl.push_str("\t\tout\n\t}\n}\n\n");
+
+		res.push_str(&struct_declaration);
+		res.push_str(&input_impl);
+		res.push_str(&output_impl);
 	}
 
 	res

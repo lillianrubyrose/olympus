@@ -1,7 +1,7 @@
 enum Action {
-    DELETE->1;
-    SECURE_DELETE->2;
-    ENCRYPT->3;
+    Delete->1;
+    SecureDelete->2;
+    Encrypt->3;
 }
 
 struct File {
