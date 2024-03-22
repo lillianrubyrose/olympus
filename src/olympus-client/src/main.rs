@@ -3,7 +3,7 @@ mod models;
 use futures::{SinkExt, StreamExt};
 use olympus_net_common::{
 	bytes::{Buf, BufMut, BytesMut},
-	fnv, CompressedOlympusPacketCodec, ProcedureOutput,
+	fnv, OlympusPacketCodec, ProcedureOutput,
 };
 use rand::{thread_rng, RngCore};
 use tokio::net::TcpStream;
@@ -13,8 +13,8 @@ use tokio_util::codec::{FramedRead, FramedWrite};
 async fn main() -> eyre::Result<()> {
 	let stream = TcpStream::connect("127.0.0.1:9999").await?;
 	let (r, w) = stream.into_split();
-	let mut framed_read = FramedRead::new(r, CompressedOlympusPacketCodec::default());
-	let mut framed_write = FramedWrite::new(w, CompressedOlympusPacketCodec::default());
+	let mut framed_read = FramedRead::new(r, OlympusPacketCodec::compress(8192));
+	let mut framed_write = FramedWrite::new(w, OlympusPacketCodec::compress(8192));
 
 	let procedure_hash = fnv("file");
 	let mut bytes = vec![0; 1024 * 10];

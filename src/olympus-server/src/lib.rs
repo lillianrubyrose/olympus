@@ -9,7 +9,7 @@ use std::{
 use futures::{Future, SinkExt, StreamExt};
 use olympus_net_common::{
 	bytes::{Buf, BytesMut},
-	fnv, CompressedOlympusPacketCodec, ProcedureInput, ProcedureOutput,
+	fnv, OlympusPacketCodec, ProcedureInput, ProcedureOutput,
 };
 use procedure::{Procedure, ProcedureHolder};
 use tokio::{
@@ -93,8 +93,8 @@ where
 		stream: TcpStream,
 	) -> std::io::Result<()> {
 		let (r, w) = stream.into_split();
-		let mut framed_read = FramedRead::new(r, CompressedOlympusPacketCodec::default());
-		let mut framed_write = FramedWrite::new(w, CompressedOlympusPacketCodec::default());
+		let mut framed_read = FramedRead::new(r, OlympusPacketCodec::compress(8192));
+		let mut framed_write = FramedWrite::new(w, OlympusPacketCodec::compress(8192));
 
 		while let Some(frame) = framed_read.next().await {
 			let mut frame = frame?;
