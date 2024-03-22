@@ -92,7 +92,7 @@ macro_rules! impl_for_signed {
                 }
             )*
         }
-};
+    };
 }
 
 impl_for_unsigned!(u8, u16, u32, u64, u128);

@@ -39,7 +39,6 @@ impl Decoder for OlympusPacketCodec {
 				}
 
 				let length = src.get_u32();
-				dbg!(length);
 				assert!(length <= Self::MAX_PACKET_SIZE, "packet too big");
 
 				self.state = OlympusPacketCodecState::Data { length };
