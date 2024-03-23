@@ -92,8 +92,6 @@ impl Decoder for OlympusPacketCodec {
 		};
 
 		if src.len() < length {
-			dbg!(length);
-			dbg!(src.len());
 			return Ok(None);
 		}
 
