@@ -2,6 +2,7 @@ pub mod procedure;
 
 use std::{
 	collections::{HashMap, HashSet},
+	mem::size_of,
 	net::SocketAddr,
 	sync::Arc,
 };
@@ -16,7 +17,10 @@ use tokio::{
 	net::{TcpListener, TcpStream},
 	sync::Mutex,
 };
-use tokio_util::codec::{FramedRead, FramedWrite};
+use tokio_util::{
+	bytes::BufMut,
+	codec::{FramedRead, FramedWrite},
+};
 
 type ArcMut<T> = Arc<Mutex<T>>;
 type HandlersMap<Ctx> = HashMap<u64, (Box<dyn Procedure<Ctx>>, &'static str)>;
@@ -42,8 +46,6 @@ where
 		}
 	}
 
-	// TODO: this doesn't allow for functions without parameters and idk what to do.
-	// i have spent far too long on this already!
 	pub async fn register_procedure<F, Fut, Res, I>(&mut self, name: &'static str, procedure_fn: F)
 	where
 		F: Fn(Ctx, I) -> Fut + Clone + Send + Sync + 'static,
@@ -103,7 +105,12 @@ where
 			match Self::run_procedure(context.clone(), procedures.clone(), procedure_name_hash, frame).await {
 				Some((response, procedure_name)) if !response.is_empty() => {
 					println!("Procedure '{procedure_name}' has response");
-					framed_write.send(response).await?;
+					let mut out = BytesMut::new();
+					out.reserve(size_of::<u64>() + response.len());
+					out.put_u64(procedure_name_hash);
+					out.extend(response);
+
+					framed_write.send(out).await?;
 				}
 				Some((_, procedure_name)) => {
 					println!("Procedure '{procedure_name}' has no response");

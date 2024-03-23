@@ -1,30 +1,43 @@
+use std::{sync::Arc, time::Duration};
+
+use olympus_client::OlympusClient;
 use olympus_net_common::{ProcedureInput, ProcedureOutput};
-use olympus_server::OlympusServer;
+use tokio::sync::Mutex;
 use tokio_util::bytes::BytesMut;
 
-type Context = ();
+async fn get_file_handler(_client: OlympusClient<()>, file: File) {
+	dbg!(file.path);
 
-async fn get_file((): Context, params: GetFileParams) -> File {
-	dbg!(params.action);
-
-	let content = tokio::fs::read(&params.path).await.unwrap();
-	File {
-		path: params.path,
-		content,
-	}
+	let content = String::from_utf8_lossy(&file.content);
+	dbg!(content);
 }
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
-	let mut server = OlympusServer::new(());
-	server.register_procedure("getFile", get_file).await;
+	let mut client = OlympusClient::new(());
+	client.on_response("getFile", get_file_handler).await;
 
-	println!("Listening @ tcp://127.0.0.1:9999");
-	server.run("127.0.0.1:9999".parse()?).await?;
+	let client = Arc::new(Mutex::new(client));
+	client.lock().await.connect("127.0.0.1:9999".parse()?).await?;
+
+	client
+		.lock()
+		.await
+		.send(
+			"getFile",
+			&GetFileParams {
+				action: None,
+				path: "/home/lily/dev/olympus/Cargo.toml".into(),
+			},
+		)
+		.unwrap();
+
+	tokio::time::sleep(Duration::from_millis(100)).await;
+
 	Ok(())
 }
 
-// olympus-compiler output below:
+// compiler generated output below
 
 #[derive(Debug, Clone)]
 pub struct GetFileParams {

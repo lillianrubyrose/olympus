@@ -92,12 +92,12 @@ fn output_rust_models(
 			"impl ::olympus_net_common::ProcedureOutput for {} {{\n",
 			&r#enum.ident.value
 		));
-		output_impl.push_str("\tfn serialize(self) -> ::olympus_net_common::bytes::BytesMut {\n");
+		output_impl.push_str("\tfn serialize(&self) -> ::olympus_net_common::bytes::BytesMut {\n");
 		output_impl.push_str("\t\tuse ::olympus_net_common::bytes::BufMut;\n");
 		output_impl.push_str(
 			"\t\tlet mut out = ::olympus_net_common::bytes::BytesMut::with_capacity(::std::mem::size_of::<u16>());\n",
 		);
-		output_impl.push_str("\t\tout.put_u16(self as _);\n");
+		output_impl.push_str("\t\tout.put_u16(*self as _);\n");
 		output_impl.push_str("\t\tout\n");
 
 		for variant in &r#enum.variants {
@@ -136,7 +136,7 @@ fn output_rust_models(
 			"impl ::olympus_net_common::ProcedureOutput for {} {{\n",
 			&strukt.ident.value
 		));
-		output_impl.push_str("\tfn serialize(self) -> ::olympus_net_common::bytes::BytesMut {\n");
+		output_impl.push_str("\tfn serialize(&self) -> ::olympus_net_common::bytes::BytesMut {\n");
 		output_impl.push_str("\t\tlet mut out = ::olympus_net_common::bytes::BytesMut::new();\n");
 
 		for field in &strukt.fields {

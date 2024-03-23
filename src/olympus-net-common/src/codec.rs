@@ -81,8 +81,8 @@ impl Decoder for OlympusPacketCodec {
 					decompressed_length,
 					length,
 				};
-				src.reserve(length as usize);
-				(compressed, decompressed_length as usize, length as usize)
+				src.reserve(length);
+				(compressed, decompressed_length, length)
 			}
 			OlympusPacketCodecState::Data {
 				compressed,

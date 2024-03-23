@@ -1,8 +1,9 @@
 use std::ops::Deref;
 
-use bytes::{Buf, BufMut, BytesMut};
+use crate::bytes::{Buf, BufMut, BytesMut};
 use zigzag::{ZigZagDecode, ZigZagEncode};
 
+#[derive(Clone)]
 pub struct Variable<T>(pub T);
 
 impl<T> Deref for Variable<T> {
@@ -24,9 +25,9 @@ macro_rules! impl_for_unsigned {
                 }
 
                 impl crate::ProcedureOutput for Variable<$ty> {
-                    fn serialize(self) -> BytesMut {
+                    fn serialize(&self) -> BytesMut {
                         let mut out = BytesMut::new();
-                        [<write_varint_$ty>](*self, &mut out);
+                        [<write_varint_$ty>](**self, &mut out);
                         out
                     }
                 }
@@ -76,9 +77,9 @@ macro_rules! impl_for_signed {
                 }
 
                 impl crate::ProcedureOutput for Variable<[<i$bits>]> {
-                    fn serialize(self) -> BytesMut {
+                    fn serialize(&self) -> BytesMut {
                         let mut out = BytesMut::new();
-                        [<write_varint_i$bits>](*self, &mut out);
+                        [<write_varint_i$bits>](**self, &mut out);
                         out
                     }
                 }
@@ -102,7 +103,7 @@ impl_for_signed!(8, 16, 32, 64, 128);
 mod tests {
 	use std::fmt::Debug;
 
-	use bytes::BytesMut;
+	use crate::bytes::BytesMut;
 
 	use crate::{
 		read_varint_i128, read_varint_i32, read_varint_i64, read_varint_i8, read_varint_u128, read_varint_u16,

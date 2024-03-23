@@ -1,13 +1,13 @@
 use std::mem::size_of;
 
-use bytes::{Buf, BufMut, BytesMut};
+use crate::bytes::{Buf, BufMut, BytesMut};
 
 pub trait ProcedureInput {
 	fn deserialize(input: &mut BytesMut) -> Self;
 }
 
 pub trait ProcedureOutput {
-	fn serialize(self) -> BytesMut;
+	fn serialize(&self) -> BytesMut;
 }
 
 impl ProcedureInput for String {
@@ -19,10 +19,10 @@ impl ProcedureInput for String {
 
 impl ProcedureOutput for String {
 	#[allow(clippy::cast_possible_truncation)]
-	fn serialize(self) -> BytesMut {
+	fn serialize(&self) -> BytesMut {
 		let mut out = BytesMut::with_capacity(size_of::<u32>() + self.len());
 		out.put_u32(self.len() as u32);
-		out.extend(self.into_bytes());
+		out.extend(self.bytes());
 		out
 	}
 }
@@ -32,7 +32,7 @@ impl ProcedureInput for () {
 }
 
 impl ProcedureOutput for () {
-	fn serialize(self) -> BytesMut {
+	fn serialize(&self) -> BytesMut {
 		BytesMut::new()
 	}
 }
@@ -50,7 +50,7 @@ impl<T: ProcedureInput> ProcedureInput for Vec<T> {
 
 impl<T: ProcedureOutput> ProcedureOutput for Vec<T> {
 	#[allow(clippy::cast_possible_truncation)]
-	fn serialize(self) -> BytesMut {
+	fn serialize(&self) -> BytesMut {
 		let mut buf = BytesMut::with_capacity((self.len() * size_of::<T>()) + size_of::<u32>());
 		buf.put_u32(self.len() as u32);
 		for ele in self {
@@ -67,9 +67,9 @@ impl ProcedureInput for bool {
 }
 
 impl ProcedureOutput for bool {
-	fn serialize(self) -> BytesMut {
+	fn serialize(&self) -> BytesMut {
 		let mut out = BytesMut::with_capacity(1);
-		out.put_u8(u8::from(self));
+		out.put_u8(u8::from(*self));
 		out
 	}
 }
@@ -84,7 +84,7 @@ macro_rules! impl_for_nums {
 			}
 
 			impl ProcedureOutput for $ty {
-				fn serialize(self) -> BytesMut {
+				fn serialize(&self) -> BytesMut {
 					BytesMut::from_iter(self.to_be_bytes())
 				}
 			}
@@ -105,7 +105,7 @@ impl<T: ProcedureInput> ProcedureInput for Option<T> {
 }
 
 impl<T: ProcedureOutput> ProcedureOutput for Option<T> {
-	fn serialize(self) -> BytesMut {
+	fn serialize(&self) -> BytesMut {
 		let mut out = BytesMut::new();
 		out.put_u8(u8::from(self.is_some()));
 		if let Some(inner) = self {
