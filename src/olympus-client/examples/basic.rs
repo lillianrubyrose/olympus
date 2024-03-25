@@ -1,8 +1,7 @@
-use std::{sync::Arc, time::Duration};
+use std::time::Duration;
 
 use olympus_client::OlympusClient;
 use olympus_net_common::{ProcedureInput, ProcedureOutput};
-use tokio::sync::Mutex;
 use tokio_util::bytes::BytesMut;
 
 async fn get_file_handler(_client: OlympusClient<()>, file: File) {
@@ -17,12 +16,8 @@ async fn main() -> eyre::Result<()> {
 	let mut client = OlympusClient::new(());
 	client.on_response("getFile", get_file_handler).await;
 
-	let client = Arc::new(Mutex::new(client));
-	client.lock().await.connect("127.0.0.1:9999".parse()?).await?;
-
+	client.connect("127.0.0.1:9999".parse()?).await?;
 	client
-		.lock()
-		.await
 		.send(
 			"getFile",
 			&GetFileParams {
