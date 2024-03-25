@@ -1,13 +1,11 @@
+mod cli;
 mod generator;
 
 use ariadne::{sources, Label, Report};
-use generator::{rust::RustCodeGenerator, CodeGenerator};
+use clap::Parser;
 use olympus_common::OlympusError;
-use olympus_lexer::Lexer;
-use olympus_parser::Parser;
-use olympus_verifier::verify_parser_outputs;
 
-fn print_err<T>(src: &str, res: Result<T, OlympusError>) -> bool {
+fn print_olympus_error<T>(src: &str, filename: String, res: Result<T, OlympusError>) -> bool {
 	if let Err(err) = res {
 		let mut lowest_start = usize::MAX;
 		for label in &err.labels {
@@ -20,47 +18,54 @@ fn print_err<T>(src: &str, res: Result<T, OlympusError>) -> bool {
 			.labels
 			.into_iter()
 			.map(|label| {
-				Label::new(("example.olympus", label.span))
+				Label::new((filename.clone(), label.span))
 					.with_message(label.message)
 					.with_color(label.color)
 			})
 			.collect::<Vec<_>>();
 
-		Report::build(ariadne::ReportKind::Error, "example.olympus", lowest_start)
+		Report::build(ariadne::ReportKind::Error, filename.clone(), lowest_start)
 			.with_message(err.subject)
 			.with_labels(labels)
 			.finish()
-			.print(sources([("example.olympus", src)]))
+			.print(sources([(filename, src)]))
 			.unwrap();
 		return true;
 	}
 	false
 }
 
-fn main() {
-	let src = include_str!("../assets/test.olympus");
-	let mut lexer = Lexer::new(src);
-	let lexer_err = print_err(src, lexer.lex());
-	if lexer_err {
-		println!("exited with lexer err");
-		return;
+#[must_use]
+pub fn verify_src(src: &str, filename: &str) -> Option<olympus_parser::Parser> {
+	let mut lexer = olympus_lexer::Lexer::new(src);
+	if print_olympus_error(src, filename.to_string(), lexer.lex()) {
+		return None;
 	}
 
-	let mut parser = Parser::new(lexer.tokens);
-	let parser_err = print_err(src, parser.parse());
-	if parser_err {
-		println!("exited with parser err");
-		return;
+	let mut parser = olympus_parser::Parser::new(lexer.tokens);
+	if print_olympus_error(src, filename.to_string(), parser.parse()) {
+		return None;
 	}
 
-	let verifier_err = print_err(src, verify_parser_outputs(&parser));
-	if verifier_err {
-		println!("exited with verifier err");
-		return;
+	if print_olympus_error(
+		src,
+		filename.to_string(),
+		olympus_verifier::verify_parser_outputs(&parser),
+	) {
+		return None;
 	}
 
-	let mut output = String::with_capacity(4096);
-	let gen = RustCodeGenerator;
-	gen.generate_models(&parser.enums, &parser.structs, &mut output);
-	println!("{}", output.replace("    ", "\t"));
+	Some(parser)
+}
+
+fn main() -> eyre::Result<()> {
+	color_eyre::install()?;
+
+	let args = cli::Args::parse();
+	match args.command {
+		cli::Command::Verify { file } => cli::verify::run(file)?,
+		cli::Command::Compile { file, output, language } => cli::compile::run(file, output, language)?,
+	}
+
+	Ok(())
 }

@@ -12,6 +12,8 @@ olympus-verifier.workspace = true
 
 ariadne.workspace = true
 clap = { version = "4.5.3", features = ["derive"] }
+eyre = "0.6.12"
+color-eyre = "0.6.3"
 
 [lints]
 workspace = true
