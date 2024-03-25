@@ -3,7 +3,7 @@ use std::ops::Deref;
 use crate::bytes::{Buf, BufMut, BytesMut};
 use zigzag::{ZigZagDecode, ZigZagEncode};
 
-#[derive(Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct Variable<T>(pub T);
 
 impl<T> Deref for Variable<T> {

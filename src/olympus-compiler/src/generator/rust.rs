@@ -106,7 +106,7 @@ impl ::olympus_net_common::ProcedureOutput for {} {{
 
 		output.push_str(&format!(
 			"
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct {} {{
 {}
 }}\n",
