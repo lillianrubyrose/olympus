@@ -6,11 +6,10 @@ enum Action {
 
 struct File {
     path->@string;
-    extension->@option[@string];
     file_size->@varuint64;
     content->@array[@uint8];
 }
 
 rpc {
-    proc getFiles(directory->@string, acterAction->Action) -> @array[File];
+    proc GetFile(path->@string, after_action->@option[Action]) -> @array[File];
 }

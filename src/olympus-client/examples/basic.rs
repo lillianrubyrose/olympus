@@ -1,11 +1,10 @@
 use std::time::Duration;
 
 use olympus_client::OlympusClient;
-use olympus_net_common::{ProcedureInput, ProcedureOutput};
-use tokio_util::bytes::BytesMut;
 
 async fn get_file_handler(_client: OlympusClient<()>, file: File) {
 	dbg!(file.path);
+	dbg!(file.file_size);
 
 	let content = String::from_utf8_lossy(&file.content);
 	dbg!(content);
@@ -21,8 +20,8 @@ async fn main() -> eyre::Result<()> {
 		.send(
 			"getFile",
 			&GetFileParams {
-				action: None,
 				path: "/home/lily/dev/olympus/Cargo.toml".into(),
+				after_action: None,
 			},
 		)
 		.unwrap();
@@ -33,30 +32,6 @@ async fn main() -> eyre::Result<()> {
 }
 
 // compiler generated output below
-
-#[derive(Debug, Clone)]
-pub struct GetFileParams {
-	pub action: Option<Action>,
-	pub path: String,
-}
-
-impl ProcedureInput for GetFileParams {
-	fn deserialize(input: &mut tokio_util::bytes::BytesMut) -> Self {
-		Self {
-			action: ProcedureInput::deserialize(input),
-			path: ProcedureInput::deserialize(input),
-		}
-	}
-}
-
-impl ProcedureOutput for GetFileParams {
-	fn serialize(&self) -> tokio_util::bytes::BytesMut {
-		let mut out = BytesMut::new();
-		out.extend(self.action.serialize());
-		out.extend(self.path.serialize());
-		out
-	}
-}
 
 #[derive(Debug, Clone, Copy)]
 #[repr(u16)]
@@ -88,10 +63,9 @@ impl ::olympus_net_common::ProcedureOutput for Action {
 	}
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct File {
 	pub path: String,
-	pub extension: Option<String>,
 	pub file_size: ::olympus_net_common::Variable<u64>,
 	pub content: Vec<u8>,
 }
@@ -100,7 +74,6 @@ impl ::olympus_net_common::ProcedureInput for File {
 	fn deserialize(input: &mut ::olympus_net_common::bytes::BytesMut) -> Self {
 		Self {
 			path: ::olympus_net_common::ProcedureInput::deserialize(input),
-			extension: ::olympus_net_common::ProcedureInput::deserialize(input),
 			file_size: ::olympus_net_common::ProcedureInput::deserialize(input),
 			content: ::olympus_net_common::ProcedureInput::deserialize(input),
 		}
@@ -111,9 +84,32 @@ impl ::olympus_net_common::ProcedureOutput for File {
 	fn serialize(&self) -> ::olympus_net_common::bytes::BytesMut {
 		let mut out = ::olympus_net_common::bytes::BytesMut::new();
 		out.extend(self.path.serialize());
-		out.extend(self.extension.serialize());
 		out.extend(self.file_size.serialize());
 		out.extend(self.content.serialize());
+		out
+	}
+}
+
+#[derive(Debug, Clone)]
+pub struct GetFileParams {
+	path: String,
+	after_action: Option<Action>,
+}
+
+impl ::olympus_net_common::ProcedureInput for GetFileParams {
+	fn deserialize(input: &mut ::olympus_net_common::bytes::BytesMut) -> Self {
+		Self {
+			path: ::olympus_net_common::ProcedureInput::deserialize(input),
+			after_action: ::olympus_net_common::ProcedureInput::deserialize(input),
+		}
+	}
+}
+
+impl ::olympus_net_common::ProcedureOutput for GetFileParams {
+	fn serialize(&self) -> ::olympus_net_common::bytes::BytesMut {
+		let mut out = ::olympus_net_common::bytes::BytesMut::new();
+		out.extend(self.path.serialize());
+		out.extend(self.after_action.serialize());
 		out
 	}
 }

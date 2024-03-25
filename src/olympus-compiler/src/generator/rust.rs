@@ -1,5 +1,6 @@
+use olympus_common::Spanned;
 use olympus_lexer::IntToken;
-use olympus_parser::{ParsedBultin, ParsedEnum, ParsedStruct, ParsedTypeKind};
+use olympus_parser::{ParsedBultin, ParsedEnum, ParsedProcedure, ParsedStruct, ParsedTypeKind};
 
 use super::CodeGenerator;
 
@@ -19,9 +20,9 @@ impl RustCodeGenerator {
 #[derive(Debug, Clone, Copy)]
 #[repr(u16)]
 pub enum {} {{
-{}
+{variants}
 }}\n",
-			parsed.ident.value, variants
+			parsed.ident.value
 		));
 	}
 
@@ -40,12 +41,12 @@ impl ::olympus_net_common::ProcedureInput for {} {{
         use ::olympus_net_common::bytes::Buf;
         let tag = input.get_u16();
         match tag {{
-{}
+{match_branches}
             tag => panic!(\"invalid tag: {{tag}}\"),
         }}
     }}
 }}\n",
-			parsed.ident.value, match_branches
+			parsed.ident.value
 		));
 	}
 
@@ -108,20 +109,18 @@ impl ::olympus_net_common::ProcedureOutput for {} {{
 			"
 #[derive(Debug, Clone)]
 pub struct {} {{
-{}
+{fields}
 }}\n",
-			parsed.ident.value, fields
+			parsed.ident.value
 		));
 	}
 
-	fn generate_struct_input_impl(parsed: &ParsedStruct, output: &mut String) {
-		let fields = parsed
-			.fields
-			.iter()
-			.map(|field| {
+	fn generate_struct_input_impl<F: Iterator<Item = Spanned<String>>>(ident: &str, fields: F, output: &mut String) {
+		let fields = fields
+			.map(|ident| {
 				format!(
 					"\t\t\t{}: ::olympus_net_common::ProcedureInput::deserialize(input),",
-					field.ident.value
+					ident.value
 				)
 			})
 			.collect::<Vec<String>>()
@@ -129,35 +128,31 @@ pub struct {} {{
 
 		output.push_str(&format!(
 			"
-impl ::olympus_net_common::ProcedureInput for {} {{
+impl ::olympus_net_common::ProcedureInput for {ident} {{
     fn deserialize(input: &mut ::olympus_net_common::bytes::BytesMut) -> Self {{
         Self {{
-{}
+{fields}
         }}
     }}
 }}\n",
-			parsed.ident.value, fields
 		));
 	}
 
-	fn generate_struct_output_impl(parsed: &ParsedStruct, output: &mut String) {
-		let fields = parsed
-			.fields
-			.iter()
-			.map(|field| format!("\t\tout.extend(self.{}.serialize());", field.ident.value))
+	fn generate_struct_output_impl<F: Iterator<Item = Spanned<String>>>(ident: &str, fields: F, output: &mut String) {
+		let fields = fields
+			.map(|ident| format!("\t\tout.extend(self.{}.serialize());", ident.value))
 			.collect::<Vec<String>>()
 			.join("\n");
 
 		output.push_str(&format!(
 			"
-impl ::olympus_net_common::ProcedureOutput for {} {{
+impl ::olympus_net_common::ProcedureOutput for {ident} {{
     fn serialize(&self) -> ::olympus_net_common::bytes::BytesMut {{
         let mut out = ::olympus_net_common::bytes::BytesMut::new();
-{}
+{fields}
         out
     }}
-}}\n",
-			parsed.ident.value, fields
+}}\n"
 		));
 	}
 }
@@ -170,8 +165,39 @@ impl CodeGenerator for RustCodeGenerator {
 	}
 
 	fn generate_struct(&self, parsed: &ParsedStruct, output: &mut String) {
+		let field_idents = parsed.fields.iter().map(|field| field.ident.clone());
 		Self::generate_struct_decl(parsed, output);
-		Self::generate_struct_input_impl(parsed, output);
-		Self::generate_struct_output_impl(parsed, output);
+		Self::generate_struct_input_impl(&parsed.ident.value, field_idents.clone(), output);
+		Self::generate_struct_output_impl(&parsed.ident.value, field_idents, output);
+	}
+
+	fn generate_procedure_params(&self, parsed: &ParsedProcedure, output: &mut String) {
+		let params = parsed
+			.params
+			.iter()
+			.map(|param| {
+				format!(
+					"\t{}: {},",
+					param.ident.value,
+					Self::parsed_type_kind_to_rust(&param.kind.value)
+				)
+			})
+			.collect::<Vec<String>>()
+			.join("\n");
+
+		output.push_str(&format!(
+			"
+#[derive(Debug, Clone)]
+pub struct {}Params {{
+{params}
+}}
+	",
+			parsed.ident.value
+		));
+
+		let struct_ident = format!("{}Params", parsed.ident.value);
+		let param_idents = parsed.params.iter().map(|field| field.ident.clone());
+		Self::generate_struct_input_impl(&struct_ident, param_idents.clone(), output);
+		Self::generate_struct_output_impl(&struct_ident, param_idents, output);
 	}
 }

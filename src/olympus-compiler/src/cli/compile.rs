@@ -21,6 +21,7 @@ pub fn run(file: PathBuf, output: PathBuf, language: CompileLanguage) -> eyre::R
 	let Some(Parser {
 		enums: parsed_enums,
 		structs: parsed_structs,
+		rpc_containers: parsed_rpc_containers,
 		..
 	}) = verify_src(&src, &filename)
 	else {
@@ -32,7 +33,7 @@ pub fn run(file: PathBuf, output: PathBuf, language: CompileLanguage) -> eyre::R
 	};
 
 	let mut models_src = String::with_capacity(4096);
-	source_gen.generate_models(&parsed_enums, &parsed_structs, &mut models_src);
+	source_gen.generate_models(&parsed_enums, &parsed_structs, &parsed_rpc_containers, &mut models_src);
 
 	let mut output_file = OpenOptions::new()
 		.write(true)
