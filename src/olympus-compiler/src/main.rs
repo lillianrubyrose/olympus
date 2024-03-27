@@ -25,12 +25,11 @@ fn print_olympus_error<T>(src: &str, filename: String, res: Result<T, OlympusErr
 			})
 			.collect::<Vec<_>>();
 
-		Report::build(ariadne::ReportKind::Error, filename.clone(), lowest_start)
+		let _ = Report::build(ariadne::ReportKind::Error, filename.clone(), lowest_start)
 			.with_message(err.subject)
 			.with_labels(labels)
 			.finish()
-			.print(sources([(filename, src)]))
-			.unwrap();
+			.eprint(sources([(filename, src)]));
 		return true;
 	}
 	false
