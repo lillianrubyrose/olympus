@@ -25,9 +25,17 @@ pub enum Command {
 
 	/// Compile an olympus definition
 	Compile {
-		file: PathBuf,
+		/// Must point to an Olympus definition file
+		input: PathBuf,
+		/// The file or directory to write the output to. WARNING: WILL OVERWRITE!
 		output: PathBuf,
 		language: CompileLanguage,
+		/// (Rust only) Generate a crate.
+		#[arg(long)]
+		rs_crate: bool,
+		/// (Rust only) The name of the crate to generate.
+		#[arg(long)]
+		rs_crate_name: Option<String>,
 	},
 }
 

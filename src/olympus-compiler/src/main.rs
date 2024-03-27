@@ -4,6 +4,7 @@ mod generator;
 use ariadne::{sources, Label, Report};
 use clap::Parser;
 use olympus_common::OlympusError;
+use std::process::exit;
 
 fn print_olympus_error<T>(src: &str, filename: String, res: Result<T, OlympusError>) -> bool {
 	if let Err(err) = res {
@@ -58,13 +59,26 @@ pub fn verify_src(src: &str, filename: &str) -> Option<olympus_parser::Parser> {
 	Some(parser)
 }
 
-fn main() -> eyre::Result<()> {
-	color_eyre::install()?;
+fn main() {
+	if let Err(err) = try_main() {
+		eprintln!("{err}");
+		exit(1);
+	}
+}
 
+fn try_main() -> eyre::Result<()> {
 	let args = cli::Args::parse();
 	match args.command {
 		cli::Command::Verify { file } => cli::verify::run(file)?,
-		cli::Command::Compile { file, output, language } => cli::compile::run(file, output, language)?,
+		cli::Command::Compile {
+			input,
+			output,
+			language,
+			rs_crate,
+			rs_crate_name,
+		} => {
+			cli::compile::run(input, output, language, rs_crate, &rs_crate_name)?;
+		}
 	}
 
 	Ok(())
