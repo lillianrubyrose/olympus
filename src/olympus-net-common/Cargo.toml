@@ -5,6 +5,7 @@ version.workspace = true
 publish.workspace = true
 
 [dependencies]
+async-trait.workspace = true
 eyre.workspace = true
 lz4_flex.workspace = true
 paste.workspace = true

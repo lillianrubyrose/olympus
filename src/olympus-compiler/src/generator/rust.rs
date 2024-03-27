@@ -1,5 +1,5 @@
 use olympus_lexer::IntToken;
-use olympus_parser::{ParsedBultin, ParsedEnum, ParsedProcedure, ParsedStruct, ParsedTypeKind};
+use olympus_parser::{ParsedBultin, ParsedEnum, ParsedProcedure, ParsedRpcContainer, ParsedStruct, ParsedTypeKind};
 use olympus_spanned::Spanned;
 
 use super::CodeGenerator;
@@ -81,6 +81,7 @@ impl ::olympus_net_common::ProcedureOutput for {} {{
 
 		match kind {
 			ParsedTypeKind::Builtin(ty) => match ty {
+				ParsedBultin::Nothing => String::new(),
 				ParsedBultin::Int(int) => format_int(int),
 				ParsedBultin::VariableInt(int) => format!("::olympus_net_common::Variable<{}>", format_int(int)),
 				ParsedBultin::String => "String".to_string(),
@@ -160,6 +161,7 @@ impl ::olympus_net_common::ProcedureOutput for {ident} {{
 impl CodeGenerator for RustCodeGenerator {
 	fn generate_file_header(&self, output: &mut String) {
 		output.push_str("#![allow(unused_qualifications)]\n");
+		output.push_str("#![allow(non_snake_case)]\n");
 	}
 
 	fn generate_enum(&self, parsed: &ParsedEnum, output: &mut String) {
@@ -173,6 +175,37 @@ impl CodeGenerator for RustCodeGenerator {
 		Self::generate_struct_decl(parsed, output);
 		Self::generate_struct_input_impl(&parsed.ident.value, field_idents.clone(), output);
 		Self::generate_struct_output_impl(&parsed.ident.value, field_idents, output);
+	}
+
+	fn generate_abstract_server_impl(&self, parsed: &ParsedRpcContainer, output: &mut String) {
+		let procedures = parsed
+			.procedures
+			.iter()
+			.map(|proc| {
+				let return_ty = Self::parsed_type_kind_to_rust(&proc.return_kind.value);
+				let return_ty = if return_ty.is_empty() {
+					"::olympus_net_common::Result<()>".to_string()
+				} else {
+					format!("::olympus_net_common::Result<{return_ty}>")
+				};
+
+				let proc_params = if proc.params.is_empty() {
+					String::new()
+				} else {
+					format!(", params: {}Params", proc.ident.value)
+				};
+
+				format!(
+					"\tasync fn {}(context: Ctx{proc_params}) -> {return_ty};",
+					proc.ident.value
+				)
+			})
+			.collect::<Vec<String>>()
+			.join("\n");
+		output.push_str("#[::olympus_net_common::async_trait]\n");
+		output.push_str("pub trait ServerRpc<Ctx: Clone + Send + Sync + 'static> {\n");
+		output.push_str(&procedures);
+		output.push_str("\n}\n");
 	}
 
 	fn generate_procedure_params(&self, parsed: &ParsedProcedure, output: &mut String) {

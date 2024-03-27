@@ -11,6 +11,7 @@ struct File {
 }
 
 rpc {
-    proc GetFile(path->@string, after_action->@option[Action]) -> @array[File];
+    proc GetServerVersion() -> @int8;
+    proc GetFile(path->@string, after_action->@option[Action]) -> File;
     proc DeleteFile(path->@string);
 }

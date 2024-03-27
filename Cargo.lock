@@ -490,6 +490,7 @@ dependencies = [
 name = "olympus-net-common"
 version = "0.0.0"
 dependencies = [
+ "async-trait",
  "eyre",
  "lz4_flex",
  "paste",
