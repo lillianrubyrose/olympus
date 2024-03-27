@@ -1,4 +1,4 @@
-pub mod procedure;
+mod procedure;
 
 use std::{
 	collections::{HashMap, HashSet},
@@ -91,7 +91,7 @@ where
 	async fn handle_connection(
 		context: Ctx,
 		procedures: ArcMut<HandlersMap<Ctx>>,
-		_: u64,
+		session_id: u64,
 		stream: TcpStream,
 	) -> Result<()> {
 		let (r, w) = stream.into_split();
@@ -103,8 +103,7 @@ where
 			let procedure_name_hash = frame.get_u64();
 
 			match Self::run_procedure(context.clone(), procedures.clone(), procedure_name_hash, frame).await? {
-				Some((response, procedure_name)) if !response.is_empty() => {
-					println!("Procedure '{procedure_name}' has response");
+				Some((response, _)) if !response.is_empty() => {
 					let mut out = BytesMut::new();
 					out.reserve(size_of::<u64>() + response.len());
 					out.put_u64(procedure_name_hash);
@@ -112,11 +111,9 @@ where
 
 					framed_write.send(out).await?;
 				}
-				Some((_, procedure_name)) => {
-					println!("Procedure '{procedure_name}' has no response");
-				}
+				Some(_) => {}
 				None => {
-					eprintln!("Procedure with hash ({procedure_name_hash}) not found");
+					eprintln!("Procedure with hash ({procedure_name_hash}) not found but client '{session_id}' tried to call it");
 				}
 			}
 		}
