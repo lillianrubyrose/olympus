@@ -2,7 +2,7 @@ const OFFSET_BASIS: u64 = 0xcbf2_9ce4_8422_2325;
 const PRIME: u64 = 0x0100_0000_01b3;
 
 // FNV-1a hash
-#[allow(clippy::must_use_candidate)]
+#[must_use]
 pub const fn fnv(str: &str) -> u64 {
 	let mut hash = OFFSET_BASIS;
 
