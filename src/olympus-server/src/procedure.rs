@@ -1,11 +1,11 @@
 use std::{future::Future, marker::PhantomData};
 
 use async_trait::async_trait;
-pub use olympus_net_common::{bytes::BytesMut, ProcedureInput, ProcedureOutput};
+pub use olympus_net_common::{bytes::BytesMut, ProcedureInput, ProcedureOutput, Result};
 
 #[async_trait]
 pub trait Procedure<Ctx>: Send {
-	async fn call(&self, context: Ctx, input: BytesMut) -> BytesMut;
+	async fn call(&self, context: Ctx, input: BytesMut) -> Result<BytesMut>;
 }
 
 #[derive(Clone)]
@@ -22,11 +22,11 @@ impl<Ctx, F, Fut, Res, I> Procedure<Ctx> for ProcedureHolder<F, I>
 where
 	Ctx: Send + 'static,
 	F: Fn(Ctx, I) -> Fut + Send + Sync,
-	Fut: Future<Output = Res> + Send,
+	Fut: Future<Output = Result<Res>> + Send,
 	Res: ProcedureOutput,
 	I: ProcedureInput + Send + Sync,
 {
-	async fn call(&self, context: Ctx, mut input: BytesMut) -> BytesMut {
-		self.0(context, I::deserialize(&mut input)).await.serialize()
+	async fn call(&self, context: Ctx, mut input: BytesMut) -> Result<BytesMut> {
+		Ok(self.0(context, I::deserialize(&mut input)).await?.serialize())
 	}
 }

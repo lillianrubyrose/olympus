@@ -500,6 +500,7 @@ dependencies = [
 name = "olympus-net-common"
 version = "0.0.0"
 dependencies = [
+ "eyre",
  "lz4_flex",
  "paste",
  "residua-zigzag",
@@ -519,7 +520,6 @@ name = "olympus-server"
 version = "0.0.0"
 dependencies = [
  "async-trait",
- "eyre",
  "futures",
  "lid",
  "olympus-net-common",

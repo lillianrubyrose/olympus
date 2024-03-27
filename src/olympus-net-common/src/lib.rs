@@ -7,6 +7,8 @@ pub mod bytes {
 	pub use tokio_util::bytes::*;
 }
 
+pub use eyre::Result;
+
 pub use codec::*;
 pub use fnv::*;
 pub use proc::*;

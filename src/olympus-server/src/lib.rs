@@ -10,7 +10,7 @@ use std::{
 use futures::{Future, SinkExt, StreamExt};
 use olympus_net_common::{
 	bytes::{Buf, BytesMut},
-	fnv, OlympusPacketCodec, ProcedureInput, ProcedureOutput,
+	fnv, OlympusPacketCodec, ProcedureInput, ProcedureOutput, Result,
 };
 use procedure::{Procedure, ProcedureHolder};
 use tokio::{
@@ -49,7 +49,7 @@ where
 	pub async fn register_procedure<F, Fut, Res, I>(&mut self, name: &'static str, procedure_fn: F)
 	where
 		F: Fn(Ctx, I) -> Fut + Send + Sync + 'static,
-		Fut: Future<Output = Res> + Send,
+		Fut: Future<Output = Result<Res>> + Send,
 		Res: ProcedureOutput,
 		I: ProcedureInput + Send + Sync + 'static,
 	{
@@ -93,7 +93,7 @@ where
 		procedures: ArcMut<HandlersMap<Ctx>>,
 		_: u64,
 		stream: TcpStream,
-	) -> std::io::Result<()> {
+	) -> Result<()> {
 		let (r, w) = stream.into_split();
 		let mut framed_read = FramedRead::new(r, OlympusPacketCodec::compress(8192));
 		let mut framed_write = FramedWrite::new(w, OlympusPacketCodec::compress(8192));
@@ -102,7 +102,7 @@ where
 			let mut frame = frame?;
 			let procedure_name_hash = frame.get_u64();
 
-			match Self::run_procedure(context.clone(), procedures.clone(), procedure_name_hash, frame).await {
+			match Self::run_procedure(context.clone(), procedures.clone(), procedure_name_hash, frame).await? {
 				Some((response, procedure_name)) if !response.is_empty() => {
 					println!("Procedure '{procedure_name}' has response");
 					let mut out = BytesMut::new();
@@ -129,9 +129,12 @@ where
 		procedures: ArcMut<HandlersMap<Ctx>>,
 		name_hash: u64,
 		input: BytesMut,
-	) -> Option<(BytesMut, &'static str)> {
+	) -> Result<Option<(BytesMut, &'static str)>> {
 		let procedure = procedures.lock().await;
-		let (procedure, name) = procedure.get(&name_hash)?;
-		Some((procedure.call(context, input).await, name))
+		if let Some((procedure, name)) = procedure.get(&name_hash) {
+			Ok(Some((procedure.call(context, input).await?, name)))
+		} else {
+			Ok(None)
+		}
 	}
 }

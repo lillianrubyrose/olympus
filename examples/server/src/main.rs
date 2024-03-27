@@ -1,22 +1,22 @@
 use common::models::{File, GetFileParams};
-use olympus_net_common::Variable;
+use olympus_net_common::{Result, Variable};
 use olympus_server::OlympusServer;
 
 type Context = ();
 
-async fn get_file((): Context, params: GetFileParams) -> File {
+async fn get_file((): Context, params: GetFileParams) -> Result<File> {
 	dbg!(params.after_action);
 
-	let content = tokio::fs::read(&params.path).await.unwrap();
-	File {
+	let content = tokio::fs::read(&params.path).await?;
+	Ok(File {
 		path: params.path,
 		size: Variable(content.len() as u64),
 		content,
-	}
+	})
 }
 
 #[tokio::main]
-async fn main() -> eyre::Result<()> {
+async fn main() -> Result<()> {
 	let mut server = OlympusServer::new(());
 	server.register_procedure("getFile", get_file).await;
 

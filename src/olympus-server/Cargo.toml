@@ -6,7 +6,6 @@ publish.workspace = true
 
 [dependencies]
 async-trait = "0.1.77"
-eyre = "0.6.12"
 futures = "0.3.30"
 lid = { version = "0.3.0", features = ["easy", "base62"], default-features = false }
 paste = "1.0.14"
