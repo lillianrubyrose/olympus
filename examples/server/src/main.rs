@@ -1,6 +1,4 @@
-mod models;
-
-use crate::models::{File, GetFileParams};
+use common::models::{File, GetFileParams};
 use olympus_net_common::Variable;
 use olympus_server::OlympusServer;
 

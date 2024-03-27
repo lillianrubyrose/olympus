@@ -1,8 +1,6 @@
-mod models;
-
 use std::time::Duration;
 
-use crate::models::{File, GetFileParams};
+use common::models::{File, GetFileParams};
 use olympus_client::OlympusClient;
 
 async fn get_file_handler(_: OlympusClient<()>, file: File) {

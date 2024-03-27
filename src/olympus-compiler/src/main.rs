@@ -74,10 +74,11 @@ fn try_main() -> eyre::Result<()> {
 			input,
 			output,
 			language,
+			overwrite,
 			rs_crate,
 			rs_crate_name,
 		} => {
-			cli::compile::run(input, output, language, rs_crate, &rs_crate_name)?;
+			cli::compile::run(input, output, language, overwrite, rs_crate, &rs_crate_name)?;
 		}
 	}
 

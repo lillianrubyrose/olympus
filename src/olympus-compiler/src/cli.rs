@@ -27,9 +27,12 @@ pub enum Command {
 	Compile {
 		/// Must point to an Olympus definition file
 		input: PathBuf,
-		/// The file or directory to write the output to. WARNING: WILL OVERWRITE!
+		/// The file or directory to write the output to.
 		output: PathBuf,
 		language: CompileLanguage,
+		/// Overwrites files/directories instead of exiting.
+		#[arg(short, long)]
+		overwrite: bool,
 		/// (Rust only) Generate a crate.
 		#[arg(long)]
 		rs_crate: bool,
