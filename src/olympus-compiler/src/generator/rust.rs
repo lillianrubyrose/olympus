@@ -42,7 +42,7 @@ impl ::olympus_net_common::ProcedureInput for {} {{
         let tag = input.get_u16();
         match tag {{
 {match_branches}
-            tag => panic!(\"invalid tag: {{tag}}\"),
+            _ => panic!(\"invalid tag: {{tag}}\"),
         }}
     }}
 }}\n",
