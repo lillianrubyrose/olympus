@@ -177,7 +177,7 @@ impl CodeGenerator for RustCodeGenerator {
 			.iter()
 			.map(|param| {
 				format!(
-					"\t{}: {},",
+					"\tpub {}: {},",
 					param.ident.value,
 					Self::parsed_type_kind_to_rust(&param.kind.value)
 				)
