@@ -158,6 +158,10 @@ impl ::olympus_net_common::ProcedureOutput for {ident} {{
 }
 
 impl CodeGenerator for RustCodeGenerator {
+	fn generate_file_header(&self, output: &mut String) {
+		output.push_str("#![allow(unused_qualifications)]\n");
+	}
+
 	fn generate_enum(&self, parsed: &ParsedEnum, output: &mut String) {
 		Self::generate_enum_decl(parsed, output);
 		Self::generate_enum_input_impl(parsed, output);
