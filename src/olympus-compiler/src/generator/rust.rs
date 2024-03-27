@@ -209,6 +209,10 @@ impl CodeGenerator for RustCodeGenerator {
 	}
 
 	fn generate_procedure_params(&self, parsed: &ParsedProcedure, output: &mut String) {
+		if parsed.params.is_empty() {
+			return;
+		}
+
 		let params = parsed
 			.params
 			.iter()

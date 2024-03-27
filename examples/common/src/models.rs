@@ -66,23 +66,6 @@ impl ::olympus_net_common::ProcedureOutput for File {
 }
 
 #[derive(Debug, Clone)]
-pub struct GetServerVersionParams {}
-
-impl ::olympus_net_common::ProcedureInput for GetServerVersionParams {
-	fn deserialize(input: &mut ::olympus_net_common::bytes::BytesMut) -> ::olympus_net_common::Result<Self> {
-		Ok(Self {})
-	}
-}
-
-impl ::olympus_net_common::ProcedureOutput for GetServerVersionParams {
-	fn serialize(&self) -> ::olympus_net_common::Result<::olympus_net_common::bytes::BytesMut> {
-		let mut out = ::olympus_net_common::bytes::BytesMut::new();
-
-		Ok(out)
-	}
-}
-
-#[derive(Debug, Clone)]
 pub struct GetFileParams {
 	pub path: String,
 	pub after_action: Option<Action>,
