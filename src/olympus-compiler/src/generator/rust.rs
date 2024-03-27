@@ -30,19 +30,19 @@ pub enum {} {{
 		let match_branches = parsed
 			.variants
 			.iter()
-			.map(|variant| format!("\t\t\t{} => Self::{},", variant.value, variant.ident.value))
+			.map(|variant| format!("\t\t\t{} => Ok(Self::{}),", variant.value, variant.ident.value))
 			.collect::<Vec<String>>()
 			.join("\n");
 
 		output.push_str(&format!(
 			"
 impl ::olympus_net_common::ProcedureInput for {} {{
-    fn deserialize(input: &mut ::olympus_net_common::bytes::BytesMut) -> Self {{
+    fn deserialize(input: &mut ::olympus_net_common::bytes::BytesMut) -> ::olympus_net_common::Result<Self> {{
         use ::olympus_net_common::bytes::Buf;
         let tag = input.get_u16();
         match tag {{
 {match_branches}
-            _ => panic!(\"invalid tag: {{tag}}\"),
+            _ => Err(::olympus_net_common::error!(\"invalid tag: {{tag}}\")),
         }}
     }}
 }}\n",
@@ -54,11 +54,11 @@ impl ::olympus_net_common::ProcedureInput for {} {{
 		output.push_str(&format!(
 			"
 impl ::olympus_net_common::ProcedureOutput for {} {{
-    fn serialize(&self) -> ::olympus_net_common::bytes::BytesMut {{
+    fn serialize(&self) -> ::olympus_net_common::Result<::olympus_net_common::bytes::BytesMut> {{
         use ::olympus_net_common::bytes::BufMut;
         let mut out = ::olympus_net_common::bytes::BytesMut::with_capacity(::std::mem::size_of::<u16>());
         out.put_u16(*self as _);
-        out
+        Ok(out)
     }}
 }}\n",
 			parsed.ident.value
@@ -119,7 +119,7 @@ pub struct {} {{
 		let fields = fields
 			.map(|ident| {
 				format!(
-					"\t\t\t{}: ::olympus_net_common::ProcedureInput::deserialize(input),",
+					"\t\t\t{}: ::olympus_net_common::ProcedureInput::deserialize(input)?,",
 					ident.value
 				)
 			})
@@ -129,10 +129,10 @@ pub struct {} {{
 		output.push_str(&format!(
 			"
 impl ::olympus_net_common::ProcedureInput for {ident} {{
-    fn deserialize(input: &mut ::olympus_net_common::bytes::BytesMut) -> Self {{
-        Self {{
+    fn deserialize(input: &mut ::olympus_net_common::bytes::BytesMut) -> ::olympus_net_common::Result<Self> {{
+        Ok(Self {{
 {fields}
-        }}
+        }})
     }}
 }}\n",
 		));
@@ -140,17 +140,17 @@ impl ::olympus_net_common::ProcedureInput for {ident} {{
 
 	fn generate_struct_output_impl<F: Iterator<Item = Spanned<String>>>(ident: &str, fields: F, output: &mut String) {
 		let fields = fields
-			.map(|ident| format!("\t\tout.extend(self.{}.serialize());", ident.value))
+			.map(|ident| format!("\t\tout.extend(self.{}.serialize()?);", ident.value))
 			.collect::<Vec<String>>()
 			.join("\n");
 
 		output.push_str(&format!(
 			"
 impl ::olympus_net_common::ProcedureOutput for {ident} {{
-    fn serialize(&self) -> ::olympus_net_common::bytes::BytesMut {{
+    fn serialize(&self) -> ::olympus_net_common::Result<::olympus_net_common::bytes::BytesMut> {{
         let mut out = ::olympus_net_common::bytes::BytesMut::new();
 {fields}
-        out
+        Ok(out)
     }}
 }}\n"
 		));

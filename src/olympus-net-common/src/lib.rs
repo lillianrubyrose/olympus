@@ -7,6 +7,7 @@ pub mod bytes {
 	pub use tokio_util::bytes::*;
 }
 
+pub use eyre::eyre as error;
 pub use eyre::Result;
 
 pub use codec::*;

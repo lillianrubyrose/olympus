@@ -19,16 +19,16 @@ macro_rules! impl_for_unsigned {
 		::paste::paste! {
             $(
                 impl crate::ProcedureInput for Variable<$ty> {
-                    fn deserialize(input: &mut BytesMut) -> Self {
-                        Variable([<read_varint_$ty>](input))
+                    fn deserialize(input: &mut BytesMut) -> crate::Result<Self> {
+                        Ok(Variable([<read_varint_$ty>](input)))
                     }
                 }
 
                 impl crate::ProcedureOutput for Variable<$ty> {
-                    fn serialize(&self) -> BytesMut {
+                    fn serialize(&self) -> crate::Result<BytesMut> {
                         let mut out = BytesMut::new();
                         [<write_varint_$ty>](**self, &mut out);
-                        out
+                        Ok(out)
                     }
                 }
 
@@ -71,16 +71,16 @@ macro_rules! impl_for_signed {
         ::paste::paste! {
             $(
                 impl crate::ProcedureInput for Variable<[<i$bits>]> {
-                    fn deserialize(input: &mut BytesMut) -> Self {
-                        Variable([<read_varint_i$bits>](input))
+                    fn deserialize(input: &mut BytesMut) -> crate::Result<Self> {
+                        Ok(Variable([<read_varint_i$bits>](input)))
                     }
                 }
 
                 impl crate::ProcedureOutput for Variable<[<i$bits>]> {
-                    fn serialize(&self) -> BytesMut {
+                    fn serialize(&self) -> crate::Result<BytesMut> {
                         let mut out = BytesMut::new();
                         [<write_varint_i$bits>](**self, &mut out);
-                        out
+                        Ok(out)
                     }
                 }
 

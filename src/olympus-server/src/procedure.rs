@@ -27,6 +27,6 @@ where
 	I: ProcedureInput + Send + Sync,
 {
 	async fn call(&self, context: Ctx, mut input: BytesMut) -> Result<BytesMut> {
-		Ok(self.0(context, I::deserialize(&mut input)).await?.serialize())
+		Ok(self.0(context, I::deserialize(&mut input)?).await?.serialize()?)
 	}
 }

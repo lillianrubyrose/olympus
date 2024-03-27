@@ -10,24 +10,24 @@ pub enum Action {
 }
 
 impl ::olympus_net_common::ProcedureInput for Action {
-	fn deserialize(input: &mut ::olympus_net_common::bytes::BytesMut) -> Self {
+	fn deserialize(input: &mut ::olympus_net_common::bytes::BytesMut) -> ::olympus_net_common::Result<Self> {
 		use ::olympus_net_common::bytes::Buf;
 		let tag = input.get_u16();
 		match tag {
-			1 => Self::Delete,
-			2 => Self::SecureDelete,
-			3 => Self::Encrypt,
-			_ => panic!("invalid tag: {tag}"),
+			1 => Ok(Self::Delete),
+			2 => Ok(Self::SecureDelete),
+			3 => Ok(Self::Encrypt),
+			_ => Err(::olympus_net_common::error!("invalid tag: {tag}")),
 		}
 	}
 }
 
 impl ::olympus_net_common::ProcedureOutput for Action {
-	fn serialize(&self) -> ::olympus_net_common::bytes::BytesMut {
+	fn serialize(&self) -> ::olympus_net_common::Result<::olympus_net_common::bytes::BytesMut> {
 		use ::olympus_net_common::bytes::BufMut;
 		let mut out = ::olympus_net_common::bytes::BytesMut::with_capacity(::std::mem::size_of::<u16>());
 		out.put_u16(*self as _);
-		out
+		Ok(out)
 	}
 }
 
@@ -39,22 +39,22 @@ pub struct File {
 }
 
 impl ::olympus_net_common::ProcedureInput for File {
-	fn deserialize(input: &mut ::olympus_net_common::bytes::BytesMut) -> Self {
-		Self {
-			path: ::olympus_net_common::ProcedureInput::deserialize(input),
-			size: ::olympus_net_common::ProcedureInput::deserialize(input),
-			content: ::olympus_net_common::ProcedureInput::deserialize(input),
-		}
+	fn deserialize(input: &mut ::olympus_net_common::bytes::BytesMut) -> ::olympus_net_common::Result<Self> {
+		Ok(Self {
+			path: ::olympus_net_common::ProcedureInput::deserialize(input)?,
+			size: ::olympus_net_common::ProcedureInput::deserialize(input)?,
+			content: ::olympus_net_common::ProcedureInput::deserialize(input)?,
+		})
 	}
 }
 
 impl ::olympus_net_common::ProcedureOutput for File {
-	fn serialize(&self) -> ::olympus_net_common::bytes::BytesMut {
+	fn serialize(&self) -> ::olympus_net_common::Result<::olympus_net_common::bytes::BytesMut> {
 		let mut out = ::olympus_net_common::bytes::BytesMut::new();
-		out.extend(self.path.serialize());
-		out.extend(self.size.serialize());
-		out.extend(self.content.serialize());
-		out
+		out.extend(self.path.serialize()?);
+		out.extend(self.size.serialize()?);
+		out.extend(self.content.serialize()?);
+		Ok(out)
 	}
 }
 
@@ -65,19 +65,19 @@ pub struct GetFileParams {
 }
 
 impl ::olympus_net_common::ProcedureInput for GetFileParams {
-	fn deserialize(input: &mut ::olympus_net_common::bytes::BytesMut) -> Self {
-		Self {
-			path: ::olympus_net_common::ProcedureInput::deserialize(input),
-			after_action: ::olympus_net_common::ProcedureInput::deserialize(input),
-		}
+	fn deserialize(input: &mut ::olympus_net_common::bytes::BytesMut) -> ::olympus_net_common::Result<Self> {
+		Ok(Self {
+			path: ::olympus_net_common::ProcedureInput::deserialize(input)?,
+			after_action: ::olympus_net_common::ProcedureInput::deserialize(input)?,
+		})
 	}
 }
 
 impl ::olympus_net_common::ProcedureOutput for GetFileParams {
-	fn serialize(&self) -> ::olympus_net_common::bytes::BytesMut {
+	fn serialize(&self) -> ::olympus_net_common::Result<::olympus_net_common::bytes::BytesMut> {
 		let mut out = ::olympus_net_common::bytes::BytesMut::new();
-		out.extend(self.path.serialize());
-		out.extend(self.after_action.serialize());
-		out
+		out.extend(self.path.serialize()?);
+		out.extend(self.after_action.serialize()?);
+		Ok(out)
 	}
 }

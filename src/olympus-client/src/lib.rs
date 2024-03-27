@@ -42,7 +42,7 @@ where
 	I: ProcedureInput + Send + Sync,
 {
 	async fn call(&self, client: OlympusClient<Ctx>, mut input: BytesMut) -> Result<()> {
-		self.0(client, I::deserialize(&mut input)).await
+		self.0(client, I::deserialize(&mut input)?).await
 	}
 }
 
@@ -86,7 +86,7 @@ impl<Ctx: Clone + Send + Sync + 'static> OlympusClient<Ctx> {
 		(*self.sender)
 			.as_ref()
 			.expect("sender should be populated before using send")
-			.send((procedure_name, input.serialize()))?;
+			.send((procedure_name, input.serialize()?))?;
 		Ok(())
 	}
 
