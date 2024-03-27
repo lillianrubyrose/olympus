@@ -1,30 +1,4 @@
-use olympus_net_common::Variable;
-use olympus_server::OlympusServer;
-
-type Context = ();
-
-async fn get_file((): Context, params: GetFileParams) -> File {
-	dbg!(params.after_action);
-
-	let content = tokio::fs::read(&params.path).await.unwrap();
-	File {
-		path: params.path,
-		file_size: Variable(content.len() as u64),
-		content,
-	}
-}
-
-#[tokio::main]
-async fn main() -> eyre::Result<()> {
-	let mut server = OlympusServer::new(());
-	server.register_procedure("getFile", get_file).await;
-
-	println!("Listening @ tcp://127.0.0.1:9999");
-	server.run("127.0.0.1:9999".parse()?).await?;
-	Ok(())
-}
-
-// olympus-compiler output below:
+#![allow(unused_qualifications)]
 
 #[derive(Debug, Clone, Copy)]
 #[repr(u16)]
@@ -59,7 +33,7 @@ impl ::olympus_net_common::ProcedureOutput for Action {
 #[derive(Debug, Clone)]
 pub struct File {
 	pub path: String,
-	pub file_size: ::olympus_net_common::Variable<u64>,
+	pub size: ::olympus_net_common::Variable<u64>,
 	pub content: Vec<u8>,
 }
 
@@ -67,7 +41,7 @@ impl ::olympus_net_common::ProcedureInput for File {
 	fn deserialize(input: &mut ::olympus_net_common::bytes::BytesMut) -> Self {
 		Self {
 			path: ::olympus_net_common::ProcedureInput::deserialize(input),
-			file_size: ::olympus_net_common::ProcedureInput::deserialize(input),
+			size: ::olympus_net_common::ProcedureInput::deserialize(input),
 			content: ::olympus_net_common::ProcedureInput::deserialize(input),
 		}
 	}
@@ -77,7 +51,7 @@ impl ::olympus_net_common::ProcedureOutput for File {
 	fn serialize(&self) -> ::olympus_net_common::bytes::BytesMut {
 		let mut out = ::olympus_net_common::bytes::BytesMut::new();
 		out.extend(self.path.serialize());
-		out.extend(self.file_size.serialize());
+		out.extend(self.size.serialize());
 		out.extend(self.content.serialize());
 		out
 	}
@@ -85,8 +59,8 @@ impl ::olympus_net_common::ProcedureOutput for File {
 
 #[derive(Debug, Clone)]
 pub struct GetFileParams {
-	path: String,
-	after_action: Option<Action>,
+	pub(crate) path: String,
+	pub(crate) after_action: Option<Action>,
 }
 
 impl ::olympus_net_common::ProcedureInput for GetFileParams {

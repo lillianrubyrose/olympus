@@ -1,5 +1,5 @@
 [workspace]
-members = ["src/*"]
+members = ["src/*", "examples/*"]
 resolver = "2"
 
 [workspace.package]
@@ -21,6 +21,8 @@ olympus-lexer = { path = "src/olympus-lexer" }
 olympus-parser = { path = "src/olympus-parser" }
 olympus-verifier = { path = "src/olympus-verifier" }
 olympus-net-common = { path = "src/olympus-net-common" }
+olympus-client = { path = "src/olympus-client" }
+olympus-server = { path = "src/olympus-server" }
 
 ariadne = "0.4"
 unicode-segmentation = "1.11"

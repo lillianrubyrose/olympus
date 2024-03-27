@@ -1,0 +1,14 @@
+[package]
+name = "example-client"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+
+[dependencies]
+olympus-client.workspace = true
+olympus-net-common.workspace = true
+tokio = "1.36.0"
+eyre = "0.6.12"
+
+[lints]
+workspace = true
