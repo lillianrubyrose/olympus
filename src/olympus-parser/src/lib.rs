@@ -17,6 +17,7 @@ pub struct ParsedEnum {
 
 #[derive(Debug)]
 pub enum ParsedBultin {
+	Nothing,
 	Int(IntToken),
 	VariableInt(IntToken),
 	String,
@@ -65,7 +66,7 @@ pub struct Parser {
 	token_idx: usize,
 	pub enums: Vec<ParsedEnum>,
 	pub structs: Vec<ParsedStruct>,
-	pub rpc_containers: Vec<ParsedRpcContainer>,
+	pub rpc_container: ParsedRpcContainer,
 }
 
 impl Parser {
@@ -76,7 +77,7 @@ impl Parser {
 			token_idx: 0,
 			enums: Vec::new(),
 			structs: Vec::new(),
-			rpc_containers: Vec::new(),
+			rpc_container: ParsedRpcContainer { procedures: vec![] },
 		}
 	}
 
@@ -371,17 +372,28 @@ impl Parser {
 						}
 					}
 
-					self.pop_must_match(|t| matches!(t, Token::Arrow), "Expected '->' after params")?;
+					let return_kind = if let Some(Spanned {
+						value: Token::Ascii(AsciiToken::SemiColon),
+						..
+					}) = self.peek()
+					{
+						self.pop();
+						Spanned::new(ParsedTypeKind::Builtin(ParsedBultin::Nothing), self.get_span(-1))
+					} else {
+						self.pop_must_match(|t| matches!(t, Token::Arrow), "Expected '->' after params")?;
 
-					let return_kind = self
-						.pop()
-						.ok_or(OlympusError::error("Expected type", self.get_span(0)))?;
-					let return_kind = self.parse_type(return_kind)?;
+						let return_kind = self
+							.pop()
+							.ok_or(OlympusError::error("Expected type", self.get_span(0)))?;
+						let return_kind = self.parse_type(return_kind)?;
 
-					self.pop_must_match(
-						|t| matches!(t, Token::Ascii(AsciiToken::SemiColon)),
-						"Expected ';' after return type",
-					)?;
+						self.pop_must_match(
+							|t| matches!(t, Token::Ascii(AsciiToken::SemiColon)),
+							"Expected ';' after return type",
+						)?;
+
+						return_kind
+					};
 
 					res.push(ParsedProcedure {
 						ident,
@@ -411,7 +423,7 @@ impl Parser {
 		)?;
 
 		let procedures = self.server_gather_procudures()?;
-		self.rpc_containers.push(ParsedRpcContainer { procedures });
+		self.rpc_container.procedures.extend(procedures);
 		Ok(())
 	}
 }

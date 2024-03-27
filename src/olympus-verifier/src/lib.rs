@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use olympus_parser::{
-	ParsedBultin, ParsedEnum, ParsedEnumVariant, ParsedProcedure, ParsedProcedureParam, ParsedRpcContainer,
-	ParsedStruct, ParsedStructField, ParsedTypeKind, Parser,
+	ParsedBultin, ParsedEnum, ParsedEnumVariant, ParsedProcedure, ParsedProcedureParam, ParsedStruct,
+	ParsedStructField, ParsedTypeKind, Parser,
 };
 use olympus_spanned::{ErrorColor, OlympusError, Spanned};
 
@@ -126,7 +126,7 @@ pub fn verify_parser_outputs(
 	Parser {
 		enums: parsed_enums,
 		structs: parsed_structs,
-		rpc_containers: parsed_rpc_containers,
+		rpc_container: parsed_rpc_container,
 		..
 	}: &Parser,
 ) -> Result<(), OlympusError> {
@@ -168,11 +168,9 @@ pub fn verify_parser_outputs(
 		}
 	}
 
-	for ParsedRpcContainer { procedures } in parsed_rpc_containers {
-		find_rpc_procedure_duplicates(procedures)?;
-		for proc in procedures {
-			find_rpc_procedure_param_duplicates(&proc.params)?;
-		}
+	find_rpc_procedure_duplicates(&parsed_rpc_container.procedures)?;
+	for proc in &parsed_rpc_container.procedures {
+		find_rpc_procedure_param_duplicates(&proc.params)?;
 	}
 
 	// checking that types are actually there
@@ -183,14 +181,12 @@ pub fn verify_parser_outputs(
 		}
 	}
 
-	for ParsedRpcContainer { procedures } in parsed_rpc_containers {
-		for proc in procedures {
-			for param in &proc.params {
-				check_accessible_type(&accessible_types, &param.kind)?;
-			}
-
-			check_accessible_type(&accessible_types, &proc.return_kind)?;
+	for proc in &parsed_rpc_container.procedures {
+		for param in &proc.params {
+			check_accessible_type(&accessible_types, &param.kind)?;
 		}
+
+		check_accessible_type(&accessible_types, &proc.return_kind)?;
 	}
 
 	Ok(())
