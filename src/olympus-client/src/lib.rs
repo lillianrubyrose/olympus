@@ -2,7 +2,7 @@ use std::{collections::HashMap, marker::PhantomData, mem::size_of, net::SocketAd
 
 use async_trait::async_trait;
 use futures::{Future, SinkExt, StreamExt};
-use olympus_net_common::{fnv, OlympusPacketCodec, ProcedureInput, ProcedureOutput};
+use olympus_net_common::{fnv, OlympusPacketCodec, ProcedureInput, ProcedureOutput, Result};
 use tokio::{
 	io,
 	net::{
@@ -21,7 +21,7 @@ use tokio_util::{
 
 #[async_trait]
 trait ResponseHandler<Ctx>: Send + Sync {
-	async fn call(&self, client: OlympusClient<Ctx>, input: BytesMut);
+	async fn call(&self, client: OlympusClient<Ctx>, input: BytesMut) -> Result<()>;
 }
 
 #[derive(Clone)]
@@ -38,11 +38,11 @@ impl<Ctx, F, Fut, I> ResponseHandler<Ctx> for ProcedureHolder<F, I>
 where
 	Ctx: Send + Sync + 'static,
 	F: Fn(OlympusClient<Ctx>, I) -> Fut + Clone + Send + Sync + 'static,
-	Fut: Future<Output = ()> + Send,
+	Fut: Future<Output = Result<()>> + Send,
 	I: ProcedureInput + Send + Sync,
 {
-	async fn call(&self, client: OlympusClient<Ctx>, mut input: BytesMut) {
-		self.0(client, I::deserialize(&mut input)).await;
+	async fn call(&self, client: OlympusClient<Ctx>, mut input: BytesMut) -> Result<()> {
+		self.0(client, I::deserialize(&mut input)).await
 	}
 }
 
@@ -69,7 +69,7 @@ impl<Ctx: Clone + Send + Sync + 'static> OlympusClient<Ctx> {
 	pub async fn on_response<F, Fut, I>(&mut self, procedure_name: &'static str, handler: F)
 	where
 		F: Fn(OlympusClient<Ctx>, I) -> Fut + Clone + Send + Sync + 'static,
-		Fut: Future<Output = ()> + Send + Sync,
+		Fut: Future<Output = Result<()>> + Send + Sync,
 		I: ProcedureInput + Clone + Send + Sync + 'static,
 	{
 		self.response_handlers.lock().await.insert(
@@ -82,10 +82,10 @@ impl<Ctx: Clone + Send + Sync + 'static> OlympusClient<Ctx> {
 		&mut self,
 		procedure_name: &'static str,
 		input: &I,
-	) -> eyre::Result<()> {
+	) -> Result<()> {
 		(*self.sender)
 			.as_ref()
-			.unwrap()
+			.expect("sender should be populated before using send")
 			.send((procedure_name, input.serialize()))?;
 		Ok(())
 	}
@@ -128,18 +128,20 @@ impl<Ctx: Clone + Send + Sync + 'static> OlympusClient<Ctx> {
 		client: OlympusClient<Ctx>,
 		handlers: ArcMut<HandlersMap<Ctx>>,
 		mut read: FramedRead<OwnedReadHalf, OlympusPacketCodec>,
-	) {
+	) -> Result<()> {
 		while let Some(frame) = read.next().await {
-			let mut frame = frame.unwrap();
+			let mut frame = frame?;
 			let procedure_name_hash = frame.get_u64();
 
 			if Self::run_handler(client.clone(), handlers.clone(), procedure_name_hash, frame)
-				.await
+				.await?
 				.is_none()
 			{
-				eprintln!("Handler for hash ({procedure_name_hash}) not found");
+				eprintln!("Handler for hash ({procedure_name_hash}) not found but packet was sent by server");
 			}
 		}
+
+		Ok(())
 	}
 
 	async fn run_handler(
@@ -147,10 +149,13 @@ impl<Ctx: Clone + Send + Sync + 'static> OlympusClient<Ctx> {
 		handlers: ArcMut<HandlersMap<Ctx>>,
 		name_hash: u64,
 		input: BytesMut,
-	) -> Option<&'static str> {
+	) -> Result<Option<&'static str>> {
 		let procedure = handlers.lock().await;
-		let (procedure, name) = procedure.get(&name_hash)?;
-		procedure.call(client, input).await;
-		Some(name)
+		if let Some((procedure, name)) = procedure.get(&name_hash) {
+			procedure.call(client, input).await?;
+			Ok(Some(name))
+		} else {
+			Ok(None)
+		}
 	}
 }

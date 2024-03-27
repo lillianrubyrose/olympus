@@ -459,7 +459,6 @@ name = "olympus-client"
 version = "0.0.0"
 dependencies = [
  "async-trait",
- "eyre",
  "futures",
  "olympus-net-common",
  "rand",
