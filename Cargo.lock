@@ -216,7 +216,6 @@ name = "example-client"
 version = "0.0.0"
 dependencies = [
  "common",
- "eyre",
  "olympus-client",
  "olympus-net-common",
  "tokio",
@@ -227,7 +226,6 @@ name = "example-server"
 version = "0.0.0"
 dependencies = [
  "common",
- "eyre",
  "olympus-net-common",
  "olympus-server",
  "tokio",

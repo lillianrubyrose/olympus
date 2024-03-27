@@ -14,7 +14,7 @@ async fn get_file_handler(_: OlympusClient<()>, file: File) -> Result<()> {
 }
 
 #[tokio::main]
-async fn main() -> eyre::Result<()> {
+async fn main() -> Result<()> {
 	let mut client = OlympusClient::new(());
 	client.on_response("getFile", get_file_handler).await;
 

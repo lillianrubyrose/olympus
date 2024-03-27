@@ -8,8 +8,7 @@ publish.workspace = true
 olympus-client.workspace = true
 olympus-net-common.workspace = true
 common = { path = "../common" }
-tokio = "1.36.0"
-eyre = "0.6.12"
+tokio.workspace = true
 
 [lints]
 workspace = true
