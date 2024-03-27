@@ -9,7 +9,7 @@ name = "olympusc"
 path = "src/main.rs"
 
 [dependencies]
-olympus-common.workspace = true
+olympus-spanned.workspace = true
 olympus-lexer.workspace = true
 olympus-parser.workspace = true
 olympus-verifier.workspace = true

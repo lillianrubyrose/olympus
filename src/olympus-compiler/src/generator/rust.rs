@@ -1,6 +1,6 @@
-use olympus_common::Spanned;
 use olympus_lexer::IntToken;
 use olympus_parser::{ParsedBultin, ParsedEnum, ParsedProcedure, ParsedStruct, ParsedTypeKind};
+use olympus_spanned::Spanned;
 
 use super::CodeGenerator;
 

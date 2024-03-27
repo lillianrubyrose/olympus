@@ -1,7 +1,7 @@
 use std::ops::Range;
 
-use olympus_common::{OlympusError, Spanned};
 use olympus_lexer::{AsciiToken, IntToken, KeywordToken, SpannedToken, Token, TypeToken};
+use olympus_spanned::{OlympusError, Spanned};
 
 #[derive(Debug)]
 pub struct ParsedEnumVariant {

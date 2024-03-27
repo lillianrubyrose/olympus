@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
-use olympus_common::{ErrorColor, OlympusError, Spanned};
 use olympus_parser::{
 	ParsedBultin, ParsedEnum, ParsedEnumVariant, ParsedProcedure, ParsedProcedureParam, ParsedRpcContainer,
 	ParsedStruct, ParsedStructField, ParsedTypeKind, Parser,
 };
+use olympus_spanned::{ErrorColor, OlympusError, Spanned};
 
 fn find_duplicate_ident(idents: &[Spanned<String>]) -> Option<(Spanned<String>, Spanned<String>)> {
 	let mut idents_map = HashMap::<String, (Spanned<String>, Option<Spanned<String>>)>::new();

@@ -16,7 +16,7 @@ too_many_lines = "allow"
 range_plus_one = "allow"
 
 [workspace.dependencies]
-olympus-common = { path = "src/olympus-common" }
+olympus-spanned = { path = "src/olympus-spanned" }
 olympus-lexer = { path = "src/olympus-lexer" }
 olympus-parser = { path = "src/olympus-parser" }
 olympus-verifier = { path = "src/olympus-verifier" }

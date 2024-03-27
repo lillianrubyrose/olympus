@@ -5,7 +5,7 @@ version.workspace = true
 publish.workspace = true
 
 [dependencies]
-olympus-common.workspace = true
+olympus-spanned.workspace = true
 olympus-parser.workspace = true
 
 [lints]

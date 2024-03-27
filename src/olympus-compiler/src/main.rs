@@ -3,7 +3,7 @@ mod generator;
 
 use ariadne::{sources, Label, Report};
 use clap::Parser;
-use olympus_common::OlympusError;
+use olympus_spanned::OlympusError;
 use std::process::exit;
 
 fn print_olympus_error<T>(src: &str, filename: String, res: Result<T, OlympusError>) -> bool {

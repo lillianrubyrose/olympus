@@ -4,8 +4,6 @@ edition.workspace = true
 version.workspace = true
 publish.workspace = true
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 paste = "1"
 tokio-util = { version = "0.7", features = ["codec"] }

@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use olympus_common::{OlympusError, Spanned};
+use olympus_spanned::{OlympusError, Spanned};
 use unicode_segmentation::UnicodeSegmentation;
 
 #[derive(Debug, Clone)]
