@@ -42,7 +42,7 @@ impl ::olympus_net_common::ProcedureInput for Action {
 			1 => Self::Delete,
 			2 => Self::SecureDelete,
 			3 => Self::Encrypt,
-			tag => panic!("invalid tag: {tag}"),
+			_ => panic!("invalid tag: {tag}"),
 		}
 	}
 }

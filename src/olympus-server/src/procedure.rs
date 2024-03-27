@@ -4,7 +4,7 @@ use async_trait::async_trait;
 pub use olympus_net_common::{bytes::BytesMut, ProcedureInput, ProcedureOutput};
 
 #[async_trait]
-pub trait Procedure<Ctx>: Send + Sync {
+pub trait Procedure<Ctx>: Send {
 	async fn call(&self, context: Ctx, input: BytesMut) -> BytesMut;
 }
 
@@ -20,8 +20,8 @@ impl<F, T> ProcedureHolder<F, T> {
 #[async_trait]
 impl<Ctx, F, Fut, Res, I> Procedure<Ctx> for ProcedureHolder<F, I>
 where
-	Ctx: Send + Sync + 'static,
-	F: Fn(Ctx, I) -> Fut + Clone + Send + Sync + 'static,
+	Ctx: Send + 'static,
+	F: Fn(Ctx, I) -> Fut + Send + Sync,
 	Fut: Future<Output = Res> + Send,
 	Res: ProcedureOutput,
 	I: ProcedureInput + Send + Sync,

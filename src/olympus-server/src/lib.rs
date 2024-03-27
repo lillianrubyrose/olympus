@@ -48,10 +48,10 @@ where
 
 	pub async fn register_procedure<F, Fut, Res, I>(&mut self, name: &'static str, procedure_fn: F)
 	where
-		F: Fn(Ctx, I) -> Fut + Clone + Send + Sync + 'static,
-		Fut: Future<Output = Res> + Send + Sync,
+		F: Fn(Ctx, I) -> Fut + Send + Sync + 'static,
+		Fut: Future<Output = Res> + Send,
 		Res: ProcedureOutput,
-		I: ProcedureInput + Clone + Send + Sync + 'static,
+		I: ProcedureInput + Send + Sync + 'static,
 	{
 		self.procedures
 			.lock()
