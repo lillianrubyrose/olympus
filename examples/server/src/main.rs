@@ -1,9 +1,10 @@
 use common::models::{DeleteFileParams, File, GetFileParams};
-use common::traits::ServerRpc;
+use common::server::{register_procedures, ServerRpc};
 use olympus_net_common::{async_trait, Result, Variable};
 use olympus_server::OlympusServer;
 
-type Context = ();
+#[derive(Clone)]
+struct Context {}
 
 pub struct ServerImpl;
 
@@ -32,13 +33,8 @@ impl ServerRpc<Context> for ServerImpl {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-	let mut server = OlympusServer::new(());
-	// TODO: make compiler spit out helper function that does this registration and wrapping of procs without params!
-	server
-		.register_procedure("getServerVersion", |ctx, (): ()| ServerImpl::get_server_version(ctx))
-		.await;
-	server.register_procedure("getFile", ServerImpl::get_file).await;
-	server.register_procedure("deleteFile", ServerImpl::delete_file).await;
+	let mut server = OlympusServer::new(Context {});
+	register_procedures(&mut server, ServerImpl).await;
 
 	println!("Listening @ tcp://127.0.0.1:9999");
 	server.run("127.0.0.1:9999".parse()?).await?;

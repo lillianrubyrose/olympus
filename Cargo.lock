@@ -209,6 +209,7 @@ name = "common"
 version = "0.0.0-OLYMPUS-GENERATED"
 dependencies = [
  "olympus-net-common",
+ "olympus-server",
 ]
 
 [[package]]

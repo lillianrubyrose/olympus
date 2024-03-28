@@ -8,3 +8,13 @@ pub trait ServerRpc<Ctx: Clone + Send + Sync + 'static> {
 	async fn get_file(context: Ctx, params: GetFileParams) -> ::olympus_net_common::Result<File>;
 	async fn delete_file(context: Ctx, params: DeleteFileParams) -> ::olympus_net_common::Result<()>;
 }
+pub async fn register_procedures<C: Clone + Send + Sync + 'static, I: ServerRpc<C> + 'static>(
+	server: &mut ::olympus_server::OlympusServer<C>,
+	_imp: I,
+) {
+	server
+		.register_procedure("GetServerVersion", |ctx, (): ()| I::get_server_version(ctx))
+		.await;
+	server.register_procedure("GetFile", I::get_file).await;
+	server.register_procedure("DeleteFile", I::delete_file).await;
+}

@@ -131,6 +131,7 @@ publish = false
 
 [dependencies]
 olympus-net-common.workspace = true
+olympus-server.workspace = true
 "
 		),
 	)?;
@@ -141,7 +142,7 @@ olympus-net-common.workspace = true
 	let src_lib_path = src_path.join("lib.rs");
 	std::fs::write(
 		src_lib_path,
-		format!("// {GENERATED_COMMENT}\npub mod models;\npub mod traits;"),
+		format!("// {GENERATED_COMMENT}\npub mod models;\npub mod server;"),
 	)?;
 
 	let src_models_path = src_path.join("models.rs");
@@ -151,13 +152,14 @@ olympus-net-common.workspace = true
 	RustCodeGenerator.generate_file_footer(&mut models_src);
 	std::fs::write(src_models_path, format!("// {GENERATED_COMMENT}\n{models_src}"))?;
 
-	let src_traits_path = src_path.join("traits.rs");
-	let mut traits_src = String::with_capacity(4096);
-	RustCodeGenerator.generate_file_header(&mut traits_src);
-	traits_src.push_str("use crate::models::*;\n");
-	RustCodeGenerator.generate_abstract_server_impl(&parser.rpc_container, &mut traits_src, naming_convention_config);
-	RustCodeGenerator.generate_file_footer(&mut traits_src);
-	std::fs::write(src_traits_path, format!("// {GENERATED_COMMENT}\n{traits_src}"))?;
+	let src_server_path = src_path.join("server.rs");
+	let mut server_src = String::with_capacity(4096);
+	RustCodeGenerator.generate_file_header(&mut server_src);
+	server_src.push_str("use crate::models::*;\n");
+	RustCodeGenerator.generate_abstract_server_impl(&parser.rpc_container, &mut server_src, naming_convention_config);
+	RustCodeGenerator.generate_server_registration_fn(&parser.rpc_container, &mut server_src, naming_convention_config);
+	RustCodeGenerator.generate_file_footer(&mut server_src);
+	std::fs::write(src_server_path, format!("// {GENERATED_COMMENT}\n{server_src}"))?;
 
 	Ok(())
 }

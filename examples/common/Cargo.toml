@@ -6,3 +6,4 @@ publish = false
 
 [dependencies]
 olympus-net-common.workspace = true
+olympus-server.workspace = true

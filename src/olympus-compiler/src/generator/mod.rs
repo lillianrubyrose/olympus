@@ -38,6 +38,12 @@ pub trait CodeGenerator {
 		output: &mut String,
 		naming_convention_config: &NamingConventionConfig,
 	);
+	fn generate_server_registration_fn(
+		&self,
+		parsed: &ParsedRpcContainer,
+		output: &mut String,
+		naming_convention_config: &NamingConventionConfig,
+	);
 	fn generate_procedure_params(
 		&self,
 		parsed: &ParsedProcedure,
