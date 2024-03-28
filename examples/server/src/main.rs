@@ -1,4 +1,5 @@
-use common::models::{DeleteFileParams, File, GetFileParams, ServerRpc};
+use common::models::{DeleteFileParams, File, GetFileParams};
+use common::traits::ServerRpc;
 use olympus_net_common::{async_trait, Result, Variable};
 use olympus_server::OlympusServer;
 
@@ -9,11 +10,11 @@ pub struct ServerImpl;
 #[allow(non_snake_case)]
 #[async_trait]
 impl ServerRpc<Context> for ServerImpl {
-	async fn GetServerVersion(_context: Context) -> Result<i8> {
+	async fn get_server_version(_context: Context) -> Result<i8> {
 		Ok(69)
 	}
 
-	async fn GetFile(_context: Context, params: GetFileParams) -> Result<File> {
+	async fn get_file(_context: Context, params: GetFileParams) -> Result<File> {
 		dbg!(params.after_action);
 
 		let content = tokio::fs::read(&params.path).await?;
@@ -24,7 +25,7 @@ impl ServerRpc<Context> for ServerImpl {
 		})
 	}
 
-	async fn DeleteFile(_context: Context, _params: DeleteFileParams) -> Result<()> {
+	async fn delete_file(_context: Context, _params: DeleteFileParams) -> Result<()> {
 		unimplemented!()
 	}
 }
@@ -34,10 +35,10 @@ async fn main() -> Result<()> {
 	let mut server = OlympusServer::new(());
 	// TODO: make compiler spit out helper function that does this registration and wrapping of procs without params!
 	server
-		.register_procedure("getServerVersion", |ctx, (): ()| ServerImpl::GetServerVersion(ctx))
+		.register_procedure("getServerVersion", |ctx, (): ()| ServerImpl::get_server_version(ctx))
 		.await;
-	server.register_procedure("getFile", ServerImpl::GetFile).await;
-	server.register_procedure("deleteFile", ServerImpl::DeleteFile).await;
+	server.register_procedure("getFile", ServerImpl::get_file).await;
+	server.register_procedure("deleteFile", ServerImpl::delete_file).await;
 
 	println!("Listening @ tcp://127.0.0.1:9999");
 	server.run("127.0.0.1:9999".parse()?).await?;

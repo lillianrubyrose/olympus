@@ -18,6 +18,7 @@ ariadne.workspace = true
 clap = { workspace = true, features = ["derive"] }
 eyre.workspace = true
 color-eyre.workspace = true
+heck.workspace = true
 
 [lints]
 workspace = true

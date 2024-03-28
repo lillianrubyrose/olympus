@@ -1,6 +1,7 @@
 mod cli;
 mod generator;
 
+use crate::cli::NamingConventionConfig;
 use ariadne::{sources, Label, Report};
 use clap::Parser;
 use olympus_spanned::OlympusError;
@@ -74,10 +75,37 @@ fn try_main() -> eyre::Result<()> {
 			output,
 			language,
 			overwrite,
+			naming_convention,
+			mut type_naming_convention,
+			mut enum_variant_naming_convention,
+			mut struct_field_naming_convention,
+			mut proc_naming_convention,
 			rs_crate,
 			rs_crate_name,
 		} => {
-			cli::compile::run(input, output, language, overwrite, rs_crate, &rs_crate_name)?;
+			if let Some(global) = naming_convention {
+				type_naming_convention = global;
+				enum_variant_naming_convention = global;
+				struct_field_naming_convention = global;
+				proc_naming_convention = global;
+			}
+
+			let naming_convention_config = NamingConventionConfig {
+				types: type_naming_convention,
+				enum_variants: enum_variant_naming_convention,
+				struct_fields: struct_field_naming_convention,
+				procs: proc_naming_convention,
+			};
+
+			cli::compile::run(
+				input,
+				output,
+				language,
+				overwrite,
+				rs_crate,
+				&rs_crate_name,
+				&naming_convention_config,
+			)?;
 		}
 	}
 

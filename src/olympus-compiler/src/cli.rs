@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 
 use clap::{Parser, Subcommand, ValueEnum};
 use eyre::eyre;
+use heck::{AsKebabCase, AsLowerCamelCase, AsPascalCase, AsShoutyKebabCase, AsShoutySnakeCase, AsSnakeCase};
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -16,6 +17,17 @@ pub struct Args {
 #[derive(Debug, Clone, Copy, ValueEnum)]
 pub enum CompileLanguage {
 	Rust,
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum)]
+#[clap(rename_all = "snake_case")]
+pub enum NamingConvention {
+	Pascal,
+	LowerCamel,
+	Snake,
+	ShoutySnake,
+	Kebab,
+	ShoutyKebab,
 }
 
 #[derive(Subcommand)]
@@ -30,9 +42,24 @@ pub enum Command {
 		/// The file or directory to write the output to.
 		output: PathBuf,
 		language: CompileLanguage,
-		/// Overwrites files/directories instead of exiting.
+		/// Overwrites files/directories if they're present instead of exiting.
 		#[arg(short, long)]
 		overwrite: bool,
+		/// Overrides all other naming convention configuration to be this value.
+		#[arg(long)]
+		naming_convention: Option<NamingConvention>,
+		/// What naming convention should be used for enums/structs
+		#[arg(long, default_value = "pascal")]
+		type_naming_convention: NamingConvention,
+		/// What naming convention should be used for enum variants
+		#[arg(long, default_value = "pascal")]
+		enum_variant_naming_convention: NamingConvention,
+		/// What naming convention should be used for struct fields
+		#[arg(long, default_value = "snake")]
+		struct_field_naming_convention: NamingConvention,
+		/// What naming convention should be used for procedures
+		#[arg(long, default_value = "snake")]
+		proc_naming_convention: NamingConvention,
 		/// (Rust only) Generate a crate.
 		#[arg(long)]
 		rs_crate: bool,
@@ -40,6 +67,43 @@ pub enum Command {
 		#[arg(long)]
 		rs_crate_name: Option<String>,
 	},
+}
+
+#[derive(Debug, Clone)]
+pub struct NamingConventionConfig {
+	pub types: NamingConvention,
+	pub struct_fields: NamingConvention,
+	pub enum_variants: NamingConvention,
+	pub procs: NamingConvention,
+}
+
+impl NamingConventionConfig {
+	fn apply(conv: NamingConvention, input: &str) -> String {
+		match conv {
+			NamingConvention::Pascal => AsPascalCase(input).to_string(),
+			NamingConvention::LowerCamel => AsLowerCamelCase(input).to_string(),
+			NamingConvention::Snake => AsSnakeCase(input).to_string(),
+			NamingConvention::ShoutySnake => AsShoutySnakeCase(input).to_string(),
+			NamingConvention::Kebab => AsKebabCase(input).to_string(),
+			NamingConvention::ShoutyKebab => AsShoutyKebabCase(input).to_string(),
+		}
+	}
+
+	pub fn apply_types(&self, input: &str) -> String {
+		Self::apply(self.types, input)
+	}
+
+	pub fn apply_enum_variants(&self, input: &str) -> String {
+		Self::apply(self.enum_variants, input)
+	}
+
+	pub fn apply_struct_fields(&self, input: &str) -> String {
+		Self::apply(self.struct_fields, input)
+	}
+
+	pub fn apply_procs(&self, input: &str) -> String {
+		Self::apply(self.procs, input)
+	}
 }
 
 pub fn ensure_is_file(path: &Path) -> eyre::Result<()> {
