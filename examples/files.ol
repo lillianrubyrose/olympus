@@ -1,3 +1,5 @@
+import user;
+
 enum Action {
     Delete->1;
     SecureDelete->2;
@@ -8,6 +10,7 @@ struct File {
     path->@string;
     size->@varuint64;
     content->@array[@uint8];
+    owner->@option[User];
 }
 
 rpc {

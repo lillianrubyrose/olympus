@@ -27,6 +27,7 @@ pub enum KeywordToken {
 	Struct,
 	Rpc,
 	Proc,
+	Import,
 }
 
 impl From<KeywordToken> for Token {
@@ -112,7 +113,7 @@ impl<'lex> Lexer<'lex> {
 		}
 	}
 
-	pub fn move_point(&mut self, value: &'lex str) {
+	fn move_point(&mut self, value: &'lex str) {
 		for ele in value.chars() {
 			if ele == '\n' {
 				self.curr_point.line += 1;
@@ -124,22 +125,22 @@ impl<'lex> Lexer<'lex> {
 	}
 
 	#[must_use]
-	pub fn is_eof(&self) -> bool {
+	fn is_eof(&self) -> bool {
 		self.curr_point.segment_idx >= self.graphemes.len()
 	}
 
 	#[must_use]
-	pub fn peek(&self) -> Option<&'lex str> {
+	fn peek(&self) -> Option<&'lex str> {
 		self.graphemes.get(self.curr_point.segment_idx).copied()
 	}
 
-	pub fn pop(&mut self) -> Option<&'lex str> {
+	fn pop(&mut self) -> Option<&'lex str> {
 		let popped = self.graphemes.get(self.curr_point.segment_idx).copied()?;
 		self.move_point(popped);
 		Some(popped)
 	}
 
-	pub fn pop_if(&mut self, predicate: impl Fn(&str) -> bool) -> Option<&'lex str> {
+	fn pop_if(&mut self, predicate: impl Fn(&str) -> bool) -> Option<&'lex str> {
 		let popped = self.graphemes.get(self.curr_point.segment_idx).copied()?;
 		if !predicate(popped) {
 			return None;
@@ -148,7 +149,7 @@ impl<'lex> Lexer<'lex> {
 		Some(popped)
 	}
 
-	pub fn pop_if_all(&mut self, predicate: impl Fn(char) -> bool) -> Option<&'lex str> {
+	fn pop_if_all(&mut self, predicate: impl Fn(char) -> bool) -> Option<&'lex str> {
 		let popped = self.graphemes.get(self.curr_point.segment_idx).copied()?;
 		for ele in popped.chars() {
 			if !predicate(ele) {
@@ -160,29 +161,29 @@ impl<'lex> Lexer<'lex> {
 	}
 
 	#[must_use]
-	pub fn get_span(&self, start: &LexPoint) -> Range<usize> {
+	fn get_span(&self, start: &LexPoint) -> Range<usize> {
 		start.file_idx..self.curr_point.file_idx
 	}
 
-	pub fn add<T: Into<Token>>(&mut self, token: T, start: &LexPoint) {
+	fn add<T: Into<Token>>(&mut self, token: T, start: &LexPoint) {
 		self.tokens.push(SpannedToken::new(token.into(), self.get_span(start)));
 	}
 
-	pub fn skip_whitespace(&mut self) {
+	fn skip_whitespace(&mut self) {
 		while self.pop_if(|v| v.chars().all(|c| c.is_ascii_whitespace())).is_some() {}
 	}
 
 	#[must_use]
-	pub fn is_ident_chr_first(v: char) -> bool {
+	fn is_ident_chr_first(v: char) -> bool {
 		v.is_ascii_alphabetic() || v == '_'
 	}
 
 	#[must_use]
-	pub fn is_ident_chr_rest(v: char) -> bool {
+	fn is_ident_chr_rest(v: char) -> bool {
 		v.is_ascii_alphanumeric() || v == '_'
 	}
 
-	pub fn pop_ident(&mut self, start: Option<&'lex str>) -> Option<String> {
+	fn pop_ident(&mut self, start: Option<&'lex str>) -> Option<String> {
 		let mut ident = String::new();
 		if let Some(start) = start {
 			ident.push_str(start);
@@ -271,6 +272,7 @@ impl<'lex> Lexer<'lex> {
 						"rpc" => self.add(KeywordToken::Rpc, &start),
 						"proc" => self.add(KeywordToken::Proc, &start),
 						"enum" => self.add(KeywordToken::Enum, &start),
+						"import" => self.add(KeywordToken::Import, &start),
 
 						ident => self.add(Token::Ident(ident.to_string()), &start),
 					}

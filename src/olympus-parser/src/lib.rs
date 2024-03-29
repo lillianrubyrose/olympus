@@ -64,6 +64,7 @@ pub struct ParsedRpcContainer {
 pub struct Parser {
 	tokens: Vec<SpannedToken>,
 	token_idx: usize,
+	pub imports: Vec<Spanned<String>>,
 	pub enums: Vec<ParsedEnum>,
 	pub structs: Vec<ParsedStruct>,
 	pub rpc_container: ParsedRpcContainer,
@@ -75,6 +76,7 @@ impl Parser {
 		Self {
 			tokens,
 			token_idx: 0,
+			imports: Vec::new(),
 			enums: Vec::new(),
 			structs: Vec::new(),
 			rpc_container: ParsedRpcContainer { procedures: vec![] },
@@ -82,11 +84,11 @@ impl Parser {
 	}
 
 	#[must_use]
-	pub fn peek(&self) -> Option<SpannedToken> {
+	fn peek(&self) -> Option<SpannedToken> {
 		self.tokens.get(self.token_idx).cloned()
 	}
 
-	pub fn pop(&mut self) -> Option<SpannedToken> {
+	fn pop(&mut self) -> Option<SpannedToken> {
 		let next = self.tokens.get(self.token_idx).cloned();
 		self.token_idx += 1;
 		next
@@ -94,18 +96,14 @@ impl Parser {
 
 	#[must_use]
 	#[allow(clippy::cast_sign_loss, clippy::cast_possible_wrap)]
-	pub fn get_span(&self, offset: isize) -> Range<usize> {
+	fn get_span(&self, offset: isize) -> Range<usize> {
 		self.tokens
 			.get((self.token_idx as isize - 1 + offset) as usize)
 			.cloned()
 			.map_or(0..0, |token| token.span)
 	}
 
-	pub fn pop_must_match(
-		&mut self,
-		predicate: impl Fn(Token) -> bool,
-		error: &str,
-	) -> Result<SpannedToken, OlympusError> {
+	fn pop_must_match(&mut self, predicate: impl Fn(Token) -> bool, error: &str) -> Result<SpannedToken, OlympusError> {
 		let next = self
 			.peek()
 			.ok_or(OlympusError::error("Expected token after", self.get_span(-1)))?;
@@ -135,6 +133,14 @@ impl Parser {
 							"This is a bug. Proc shouldn't be parsed here.",
 							self.get_span(0),
 						))
+					}
+					KeywordToken::Import => {
+						let ident = next_must_match!(self, "Expected Ident for import", Ident);
+						self.pop_must_match(
+							|t| matches!(t, Token::Ascii(AsciiToken::SemiColon)),
+							"Expected ';' after import",
+						)?;
+						self.imports.push(ident);
 					}
 				},
 				token => {
@@ -182,7 +188,7 @@ impl Parser {
 		Ok(res)
 	}
 
-	pub fn parse_enum(&mut self) -> Result<(), OlympusError> {
+	fn parse_enum(&mut self) -> Result<(), OlympusError> {
 		let ident = next_must_match!(self, "Expected Ident for enum", Ident);
 
 		self.pop_must_match(
@@ -319,7 +325,7 @@ impl Parser {
 		Ok(res)
 	}
 
-	pub fn parse_data(&mut self) -> Result<(), OlympusError> {
+	fn parse_data(&mut self) -> Result<(), OlympusError> {
 		let ident = next_must_match!(self, "Expected Ident for data", Ident);
 
 		self.pop_must_match(
@@ -416,7 +422,7 @@ impl Parser {
 		Ok(res)
 	}
 
-	pub fn parse_server(&mut self) -> Result<(), OlympusError> {
+	fn parse_server(&mut self) -> Result<(), OlympusError> {
 		self.pop_must_match(
 			|t| matches!(t, Token::Ascii(AsciiToken::OpenBrace)),
 			"Expected '{' after server",

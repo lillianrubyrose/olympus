@@ -1,0 +1,3 @@
+struct User {
+    name->@string;
+}

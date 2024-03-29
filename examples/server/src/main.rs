@@ -8,7 +8,6 @@ struct Context {}
 
 pub struct ServerImpl;
 
-#[allow(non_snake_case)]
 #[async_trait]
 impl ServerRpc<Context> for ServerImpl {
 	async fn get_server_version(_context: Context) -> Result<i8> {
