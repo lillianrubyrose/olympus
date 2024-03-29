@@ -13,8 +13,6 @@ struct File {
     owner->@option[User];
 }
 
-rpc {
-    proc GetServerVersion() -> @int8;
-    proc GetFile(path->@string, after_action->@option[Action]) -> File;
-    proc DeleteFile(path->@string);
-}
+proc GetServerVersion() -> @int8;
+proc GetFile(path->@string, after_action->@option[Action]) -> File;
+proc DeleteFile(path->@string);

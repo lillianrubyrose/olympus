@@ -56,11 +56,6 @@ pub struct ParsedProcedure {
 	pub return_kind: Spanned<ParsedTypeKind>,
 }
 
-#[derive(Debug)]
-pub struct ParsedRpcContainer {
-	pub procedures: Vec<ParsedProcedure>,
-}
-
 pub struct Parser {
 	pub source: Rc<CodeSource>,
 	tokens: Vec<SpannedToken>,
@@ -68,7 +63,7 @@ pub struct Parser {
 	pub imports: Vec<Spanned<String>>,
 	pub enums: Vec<ParsedEnum>,
 	pub structs: Vec<ParsedStruct>,
-	pub rpc_container: ParsedRpcContainer,
+	pub procedures: Vec<ParsedProcedure>,
 }
 
 impl Parser {
@@ -81,7 +76,7 @@ impl Parser {
 			imports: Vec::new(),
 			enums: Vec::new(),
 			structs: Vec::new(),
-			rpc_container: ParsedRpcContainer { procedures: vec![] },
+			procedures: Vec::new(),
 		}
 	}
 
@@ -131,14 +126,7 @@ impl Parser {
 				Token::Keyword(keyword) => match keyword {
 					KeywordToken::Enum => self.parse_enum()?,
 					KeywordToken::Struct => self.parse_data()?,
-					KeywordToken::Rpc => self.parse_server()?,
-					KeywordToken::Proc => {
-						return Err(OlympusError::error(
-							self.source.clone(),
-							"This is a bug. Proc shouldn't be parsed here.",
-							self.get_span(0),
-						))
-					}
+					KeywordToken::Proc => self.parse_procedure()?,
 					KeywordToken::Import => {
 						let ident = next_must_match!(self, "Expected Ident for import", Ident);
 						self.pop_must_match(
@@ -361,103 +349,74 @@ impl Parser {
 		Ok(())
 	}
 
-	fn server_gather_procudures(&mut self) -> Result<Vec<ParsedProcedure>, OlympusError> {
-		let mut res = Vec::new();
+	fn parse_procedure(&mut self) -> Result<(), OlympusError> {
+		let ident = next_must_match!(self, "Expected ident", Ident);
+		self.pop_must_match(
+			|t| matches!(t, Token::Ascii(AsciiToken::OpenParen)),
+			"Expected '(' after ident",
+		)?;
 
+		let mut params: Vec<ParsedProcedureParam> = Vec::new();
 		while let Some(token) = self.pop() {
 			match token.value {
-				Token::Keyword(KeywordToken::Proc) => {
-					let ident = next_must_match!(self, "Expected ident", Ident);
-					self.pop_must_match(
-						|t| matches!(t, Token::Ascii(AsciiToken::OpenParen)),
-						"Expected '(' after ident",
-					)?;
+				Token::Ident(ident) => {
+					self.pop_must_match(|t| matches!(t, Token::Arrow), "Expected '->' after ident")?;
 
-					let mut params: Vec<ParsedProcedureParam> = Vec::new();
-					while let Some(token) = self.pop() {
-						match token.value {
-							Token::Ident(ident) => {
-								self.pop_must_match(|t| matches!(t, Token::Arrow), "Expected '->' after ident")?;
+					let kind = self.pop().ok_or(OlympusError::error(
+						self.source.clone(),
+						"Expected type",
+						self.get_span(0),
+					))?;
+					let kind = self.parse_type(kind)?;
 
-								let kind = self.pop().ok_or(OlympusError::error(
-									self.source.clone(),
-									"Expected type",
-									self.get_span(0),
-								))?;
-								let kind = self.parse_type(kind)?;
-
-								params.push(ParsedProcedureParam {
-									ident: Spanned::new(ident, token.span),
-									kind,
-								});
-							}
-							Token::Ascii(AsciiToken::CloseParen) => break,
-							Token::Ascii(AsciiToken::Comma) => continue,
-							token => {
-								return Err(OlympusError::error(
-									self.source.clone(),
-									&format!("Expected ident or ')'. Got: {token:?}"),
-									self.get_span(0),
-								))
-							}
-						}
-					}
-
-					let return_kind = if let Some(Spanned {
-						value: Token::Ascii(AsciiToken::SemiColon),
-						..
-					}) = self.peek()
-					{
-						self.pop();
-						Spanned::new(ParsedTypeKind::Builtin(ParsedBultin::Nothing), self.get_span(-1))
-					} else {
-						self.pop_must_match(|t| matches!(t, Token::Arrow), "Expected '->' after params")?;
-
-						let return_kind = self.pop().ok_or(OlympusError::error(
-							self.source.clone(),
-							"Expected type",
-							self.get_span(0),
-						))?;
-						let return_kind = self.parse_type(return_kind)?;
-
-						self.pop_must_match(
-							|t| matches!(t, Token::Ascii(AsciiToken::SemiColon)),
-							"Expected ';' after return type",
-						)?;
-
-						return_kind
-					};
-
-					res.push(ParsedProcedure {
-						ident,
-						params,
-						return_kind,
+					params.push(ParsedProcedureParam {
+						ident: Spanned::new(ident, token.span),
+						kind,
 					});
 				}
-				Token::Ascii(AsciiToken::CloseBrace) => {
-					break;
-				}
+				Token::Ascii(AsciiToken::CloseParen) => break,
+				Token::Ascii(AsciiToken::Comma) => continue,
 				token => {
 					return Err(OlympusError::error(
 						self.source.clone(),
-						&format!("Expected '}}' or proc. Got: {token:?}"),
+						&format!("Expected ident or ')'. Got: {token:?}"),
 						self.get_span(0),
 					))
 				}
 			}
 		}
 
-		Ok(res)
-	}
+		let return_kind = if let Some(Spanned {
+			value: Token::Ascii(AsciiToken::SemiColon),
+			..
+		}) = self.peek()
+		{
+			self.pop();
+			Spanned::new(ParsedTypeKind::Builtin(ParsedBultin::Nothing), self.get_span(-1))
+		} else {
+			self.pop_must_match(|t| matches!(t, Token::Arrow), "Expected '->' after params")?;
 
-	fn parse_server(&mut self) -> Result<(), OlympusError> {
-		self.pop_must_match(
-			|t| matches!(t, Token::Ascii(AsciiToken::OpenBrace)),
-			"Expected '{' after server",
-		)?;
+			let return_kind = self.pop().ok_or(OlympusError::error(
+				self.source.clone(),
+				"Expected type",
+				self.get_span(0),
+			))?;
+			let return_kind = self.parse_type(return_kind)?;
 
-		let procedures = self.server_gather_procudures()?;
-		self.rpc_container.procedures.extend(procedures);
+			self.pop_must_match(
+				|t| matches!(t, Token::Ascii(AsciiToken::SemiColon)),
+				"Expected ';' after return type",
+			)?;
+
+			return_kind
+		};
+
+		self.procedures.push(ParsedProcedure {
+			ident,
+			params,
+			return_kind,
+		});
+
 		Ok(())
 	}
 }

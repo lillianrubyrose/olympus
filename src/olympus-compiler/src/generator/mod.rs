@@ -1,5 +1,5 @@
 use crate::cli::NamingConventionConfig;
-use olympus_parser::{ParsedEnum, ParsedProcedure, ParsedRpcContainer, ParsedStruct, Parser};
+use olympus_parser::{ParsedEnum, ParsedProcedure, ParsedStruct, Parser};
 
 pub mod rust;
 
@@ -13,7 +13,7 @@ pub trait CodeGenerator {
 			self.generate_struct(r#struct, output, naming_convention_config);
 		}
 
-		for proc in &parser.rpc_container.procedures {
+		for proc in &parser.procedures {
 			self.generate_procedure_params(proc, output, naming_convention_config);
 		}
 	}
@@ -34,13 +34,13 @@ pub trait CodeGenerator {
 	);
 	fn generate_abstract_server_impl(
 		&self,
-		parsed: &ParsedRpcContainer,
+		parsed: &[ParsedProcedure],
 		output: &mut String,
 		naming_convention_config: &NamingConventionConfig,
 	);
 	fn generate_server_registration_fn(
 		&self,
-		parsed: &ParsedRpcContainer,
+		parsed: &[ParsedProcedure],
 		output: &mut String,
 		naming_convention_config: &NamingConventionConfig,
 	);

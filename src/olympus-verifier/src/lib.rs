@@ -132,7 +132,7 @@ pub fn verify_parser_outputs(
 		source,
 		enums: parsed_enums,
 		structs: parsed_structs,
-		rpc_container: parsed_rpc_container,
+		procedures,
 		..
 	}: &Parser,
 ) -> Result<(), OlympusError> {
@@ -178,8 +178,8 @@ pub fn verify_parser_outputs(
 		}
 	}
 
-	find_rpc_procedure_duplicates(source.clone(), &parsed_rpc_container.procedures)?;
-	for proc in &parsed_rpc_container.procedures {
+	find_rpc_procedure_duplicates(source.clone(), procedures)?;
+	for proc in procedures {
 		find_rpc_procedure_param_duplicates(source.clone(), &proc.params)?;
 	}
 
@@ -191,7 +191,7 @@ pub fn verify_parser_outputs(
 		}
 	}
 
-	for proc in &parsed_rpc_container.procedures {
+	for proc in procedures {
 		for param in &proc.params {
 			check_accessible_type(source.clone(), &accessible_types, &param.kind)?;
 		}

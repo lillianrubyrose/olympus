@@ -25,7 +25,6 @@ impl From<AsciiToken> for Token {
 pub enum KeywordToken {
 	Enum,
 	Struct,
-	Rpc,
 	Proc,
 	Import,
 }
@@ -281,7 +280,6 @@ impl Lexer {
 
 					match ident.as_str() {
 						"struct" => self.add(KeywordToken::Struct, &start),
-						"rpc" => self.add(KeywordToken::Rpc, &start),
 						"proc" => self.add(KeywordToken::Proc, &start),
 						"enum" => self.add(KeywordToken::Enum, &start),
 						"import" => self.add(KeywordToken::Import, &start),

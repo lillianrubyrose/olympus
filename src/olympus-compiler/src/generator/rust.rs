@@ -1,6 +1,6 @@
 use crate::cli::NamingConventionConfig;
 use olympus_lexer::IntToken;
-use olympus_parser::{ParsedBultin, ParsedEnum, ParsedProcedure, ParsedRpcContainer, ParsedStruct, ParsedTypeKind};
+use olympus_parser::{ParsedBultin, ParsedEnum, ParsedProcedure, ParsedStruct, ParsedTypeKind};
 use olympus_spanned::Spanned;
 
 use super::CodeGenerator;
@@ -242,12 +242,11 @@ impl CodeGenerator for RustCodeGenerator {
 
 	fn generate_abstract_server_impl(
 		&self,
-		parsed: &ParsedRpcContainer,
+		parsed: &[ParsedProcedure],
 		output: &mut String,
 		naming_convention_config: &NamingConventionConfig,
 	) {
 		let procedures = parsed
-			.procedures
 			.iter()
 			.map(|proc| {
 				let return_ty = Self::parsed_type_kind_to_rust(&proc.return_kind.value, naming_convention_config);
@@ -281,12 +280,12 @@ impl CodeGenerator for RustCodeGenerator {
 
 	fn generate_server_registration_fn(
 		&self,
-		parsed: &ParsedRpcContainer,
+		parsed: &[ParsedProcedure],
 		output: &mut String,
 		naming_convention_config: &NamingConventionConfig,
 	) {
 		output.push_str(&format!("pub async fn {}<C: Clone + Send + Sync + 'static, I: {}<C> + 'static>(server: &mut ::olympus_server::OlympusServer<C>, _imp: I) {{\n", naming_convention_config.apply_procs("register_procedures"), naming_convention_config.apply_types("ServerRpc")));
-		for proc in &parsed.procedures {
+		for proc in parsed {
 			if proc.params.is_empty() {
 				output.push_str(&format!(
 					"\tserver.register_procedure(\"{}\", |ctx, (): ()| I::{}(ctx)).await;\n",

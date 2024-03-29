@@ -156,8 +156,8 @@ olympus-server.workspace = true
 	let mut server_src = String::with_capacity(4096);
 	RustCodeGenerator.generate_file_header(&mut server_src);
 	server_src.push_str("use crate::models::*;\n");
-	RustCodeGenerator.generate_abstract_server_impl(&parser.rpc_container, &mut server_src, naming_convention_config);
-	RustCodeGenerator.generate_server_registration_fn(&parser.rpc_container, &mut server_src, naming_convention_config);
+	RustCodeGenerator.generate_abstract_server_impl(&parser.procedures, &mut server_src, naming_convention_config);
+	RustCodeGenerator.generate_server_registration_fn(&parser.procedures, &mut server_src, naming_convention_config);
 	RustCodeGenerator.generate_file_footer(&mut server_src);
 	std::fs::write(src_server_path, format!("// {GENERATED_COMMENT}\n{server_src}"))?;
 
