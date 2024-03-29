@@ -4,8 +4,8 @@ mod generator;
 use crate::cli::NamingConventionConfig;
 use ariadne::{sources, Label, Report};
 use clap::Parser;
-use olympus_spanned::OlympusError;
-use std::process::exit;
+use olympus_spanned::{CodeSource, OlympusError};
+use std::{process::exit, rc::Rc};
 
 fn print_olympus_error<T>(src: &str, filename: String, res: Result<T, OlympusError>) -> bool {
 	if let Err(err) = res {
@@ -38,12 +38,16 @@ fn print_olympus_error<T>(src: &str, filename: String, res: Result<T, OlympusErr
 
 #[must_use]
 pub fn verify_src(src: &str, filename: &str) -> Option<olympus_parser::Parser> {
-	let mut lexer = olympus_lexer::Lexer::new(src);
+	let source = Rc::new(CodeSource {
+		file_name: filename.to_string(),
+		src: src.to_string(),
+	});
+	let mut lexer = olympus_lexer::Lexer::new(source);
 	if print_olympus_error(src, filename.to_string(), lexer.lex()) {
 		return None;
 	}
 
-	let mut parser = olympus_parser::Parser::new(lexer.tokens);
+	let mut parser = olympus_parser::Parser::new(lexer);
 	if print_olympus_error(src, filename.to_string(), parser.parse()) {
 		return None;
 	}

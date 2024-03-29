@@ -1,7 +1,7 @@
-use std::ops::Range;
+use std::{ops::Range, rc::Rc};
 
-use olympus_lexer::{AsciiToken, IntToken, KeywordToken, SpannedToken, Token, TypeToken};
-use olympus_spanned::{OlympusError, Spanned};
+use olympus_lexer::{AsciiToken, IntToken, KeywordToken, Lexer, SpannedToken, Token, TypeToken};
+use olympus_spanned::{CodeSource, OlympusError, Spanned};
 
 #[derive(Debug)]
 pub struct ParsedEnumVariant {
@@ -62,6 +62,7 @@ pub struct ParsedRpcContainer {
 }
 
 pub struct Parser {
+	pub source: Rc<CodeSource>,
 	tokens: Vec<SpannedToken>,
 	token_idx: usize,
 	pub imports: Vec<Spanned<String>>,
@@ -72,9 +73,10 @@ pub struct Parser {
 
 impl Parser {
 	#[must_use]
-	pub fn new(tokens: Vec<SpannedToken>) -> Self {
+	pub fn new(lexer: Lexer) -> Self {
 		Self {
-			tokens,
+			source: lexer.source,
+			tokens: lexer.tokens,
 			token_idx: 0,
 			imports: Vec::new(),
 			enums: Vec::new(),
@@ -104,12 +106,14 @@ impl Parser {
 	}
 
 	fn pop_must_match(&mut self, predicate: impl Fn(Token) -> bool, error: &str) -> Result<SpannedToken, OlympusError> {
-		let next = self
-			.peek()
-			.ok_or(OlympusError::error("Expected token after", self.get_span(-1)))?;
+		let next = self.peek().ok_or(OlympusError::error(
+			self.source.clone(),
+			"Expected token after",
+			self.get_span(-1),
+		))?;
 
 		if !predicate(next.value.clone()) {
-			return Err(OlympusError::error(error, self.get_span(0)));
+			return Err(OlympusError::error(self.source.clone(), error, self.get_span(0)));
 		}
 
 		self.token_idx += 1;
@@ -130,6 +134,7 @@ impl Parser {
 					KeywordToken::Rpc => self.parse_server()?,
 					KeywordToken::Proc => {
 						return Err(OlympusError::error(
+							self.source.clone(),
 							"This is a bug. Proc shouldn't be parsed here.",
 							self.get_span(0),
 						))
@@ -145,6 +150,7 @@ impl Parser {
 				},
 				token => {
 					return Err(OlympusError::error(
+						self.source.clone(),
 						&format!("Unexpected token: {token:?}"),
 						self.get_span(0),
 					))
@@ -178,6 +184,7 @@ impl Parser {
 				}
 				token => {
 					return Err(OlympusError::error(
+						self.source.clone(),
 						&format!("Expected '}}' or Ident. Got: {token:?}"),
 						self.get_span(0),
 					))
@@ -211,9 +218,11 @@ impl Parser {
 			"Expected generic type",
 		)?;
 
-		let array_type = self
-			.pop()
-			.ok_or(OlympusError::error("Expected generic type", self.get_span(-1)))?;
+		let array_type = self.pop().ok_or(OlympusError::error(
+			self.source.clone(),
+			"Expected generic type",
+			self.get_span(-1),
+		))?;
 
 		let value = match array_type.value {
 			Token::Ident(ident) => Ok(Spanned::new(ParsedTypeKind::External(ident), array_type.span)),
@@ -239,7 +248,11 @@ impl Parser {
 					this_span,
 				)),
 			},
-			_ => Err(OlympusError::error("Expected type", self.get_span(0))),
+			_ => Err(OlympusError::error(
+				self.source.clone(),
+				"Expected type",
+				self.get_span(0),
+			)),
 		}?;
 
 		self.pop_must_match(
@@ -281,7 +294,13 @@ impl Parser {
 					kind_token.span,
 				),
 			},
-			_ => return Err(OlympusError::error("Expected type", self.get_span(0))),
+			_ => {
+				return Err(OlympusError::error(
+					self.source.clone(),
+					"Expected type",
+					self.get_span(0),
+				))
+			}
 		};
 
 		Ok(array_type)
@@ -295,9 +314,11 @@ impl Parser {
 				Token::Ident(ident) => {
 					self.pop_must_match(|t| matches!(t, Token::Arrow), "Expected '->' after ident")?;
 
-					let kind = self
-						.pop()
-						.ok_or(OlympusError::error("Expected type", self.get_span(0)))?;
+					let kind = self.pop().ok_or(OlympusError::error(
+						self.source.clone(),
+						"Expected type",
+						self.get_span(0),
+					))?;
 					let kind = self.parse_type(kind)?;
 
 					self.pop_must_match(
@@ -315,6 +336,7 @@ impl Parser {
 				}
 				token => {
 					return Err(OlympusError::error(
+						self.source.clone(),
 						&format!("Expected '}}' or ident. Got: {token:?}"),
 						self.get_span(0),
 					))
@@ -357,9 +379,11 @@ impl Parser {
 							Token::Ident(ident) => {
 								self.pop_must_match(|t| matches!(t, Token::Arrow), "Expected '->' after ident")?;
 
-								let kind = self
-									.pop()
-									.ok_or(OlympusError::error("Expected type", self.get_span(0)))?;
+								let kind = self.pop().ok_or(OlympusError::error(
+									self.source.clone(),
+									"Expected type",
+									self.get_span(0),
+								))?;
 								let kind = self.parse_type(kind)?;
 
 								params.push(ParsedProcedureParam {
@@ -371,6 +395,7 @@ impl Parser {
 							Token::Ascii(AsciiToken::Comma) => continue,
 							token => {
 								return Err(OlympusError::error(
+									self.source.clone(),
 									&format!("Expected ident or ')'. Got: {token:?}"),
 									self.get_span(0),
 								))
@@ -388,9 +413,11 @@ impl Parser {
 					} else {
 						self.pop_must_match(|t| matches!(t, Token::Arrow), "Expected '->' after params")?;
 
-						let return_kind = self
-							.pop()
-							.ok_or(OlympusError::error("Expected type", self.get_span(0)))?;
+						let return_kind = self.pop().ok_or(OlympusError::error(
+							self.source.clone(),
+							"Expected type",
+							self.get_span(0),
+						))?;
 						let return_kind = self.parse_type(return_kind)?;
 
 						self.pop_must_match(
@@ -412,6 +439,7 @@ impl Parser {
 				}
 				token => {
 					return Err(OlympusError::error(
+						self.source.clone(),
 						&format!("Expected '}}' or proc. Got: {token:?}"),
 						self.get_span(0),
 					))
@@ -437,6 +465,7 @@ impl Parser {
 #[macro_export]
 macro_rules! next_must_match {
 	($self:expr, $expected:expr, $match:ident) => {{
+		// let source = $self.source.clone();
 		let peeked = $self.peek();
 		match peeked {
 			Some(spanned) => match spanned.value {
@@ -445,9 +474,9 @@ macro_rules! next_must_match {
 					let span = $self.get_span(0);
 					Spanned::new(v, span)
 				}
-				_ => return Err(OlympusError::error($expected, $self.get_span(0))),
+				_ => return Err(OlympusError::error($self.source.clone(), $expected, $self.get_span(0))),
 			},
-			_ => return Err(OlympusError::error($expected, $self.get_span(0))),
+			_ => return Err(OlympusError::error($self.source.clone(), $expected, $self.get_span(0))),
 		}
 	}};
 }

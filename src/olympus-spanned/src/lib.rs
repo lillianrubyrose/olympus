@@ -1,7 +1,14 @@
 pub use ariadne::Color as ErrorColor;
-use std::ops::Range;
+use std::{ops::Range, rc::Rc};
 
-pub struct OlympusLabeledError {
+#[derive(Debug, Clone)]
+pub struct CodeSource {
+	pub file_name: String,
+	pub src: String,
+}
+
+pub struct OlympusErrorLabel {
+	pub source: Rc<CodeSource>,
 	pub message: String,
 	pub span: Range<usize>,
 	pub color: ErrorColor,
@@ -9,14 +16,15 @@ pub struct OlympusLabeledError {
 
 pub struct OlympusError {
 	pub subject: String,
-	pub labels: Vec<OlympusLabeledError>,
+	pub labels: Vec<OlympusErrorLabel>,
 }
 
 impl OlympusError {
-	pub fn error<S: ToOwned<Owned = String> + ?Sized>(subject: &S, span: Range<usize>) -> Self {
+	pub fn error<S: ToOwned<Owned = String> + ?Sized>(source: Rc<CodeSource>, subject: &S, span: Range<usize>) -> Self {
 		Self {
 			subject: subject.to_owned(),
-			labels: vec![OlympusLabeledError {
+			labels: vec![OlympusErrorLabel {
+				source,
 				message: subject.to_owned(),
 				span,
 				color: ErrorColor::Red,
@@ -32,8 +40,9 @@ impl OlympusError {
 	}
 
 	#[must_use]
-	pub fn span(mut self, span: Range<usize>, color: ErrorColor) -> Self {
-		self.labels.push(OlympusLabeledError {
+	pub fn span(mut self, source: Rc<CodeSource>, span: Range<usize>, color: ErrorColor) -> Self {
+		self.labels.push(OlympusErrorLabel {
+			source,
 			message: self.subject.clone(),
 			span,
 			color,
@@ -44,11 +53,13 @@ impl OlympusError {
 	#[must_use]
 	pub fn label<S: ToOwned<Owned = String> + ?Sized>(
 		mut self,
+		source: Rc<CodeSource>,
 		message: &S,
 		span: Range<usize>,
 		color: ErrorColor,
 	) -> Self {
-		self.labels.push(OlympusLabeledError {
+		self.labels.push(OlympusErrorLabel {
+			source,
 			message: message.to_owned(),
 			span,
 			color,

@@ -1,6 +1,6 @@
-use std::ops::Range;
+use std::{ops::Range, rc::Rc};
 
-use olympus_spanned::{OlympusError, Spanned};
+use olympus_spanned::{CodeSource, OlympusError, Spanned};
 use unicode_segmentation::UnicodeSegmentation;
 
 #[derive(Debug, Clone)]
@@ -93,17 +93,21 @@ pub struct LexPoint {
 	pub file_idx: usize,
 }
 
-pub struct Lexer<'lex> {
-	graphemes: Vec<&'lex str>,
+pub struct Lexer {
+	pub source: Rc<CodeSource>,
+	graphemes: Vec<String>,
 	curr_point: LexPoint,
 	pub tokens: Vec<SpannedToken>,
 }
 
-impl<'lex> Lexer<'lex> {
+impl Lexer {
 	#[must_use]
-	pub fn new(src: &'lex str) -> Self {
+	pub fn new(source: Rc<CodeSource>) -> Self {
+		let graphemes = source.src.clone();
+		let graphemes = graphemes.graphemes(true).map(str::to_string).collect();
 		Self {
-			graphemes: src.graphemes(true).collect(),
+			source,
+			graphemes,
 			curr_point: LexPoint {
 				line: 1,
 				segment_idx: 0,
@@ -113,7 +117,7 @@ impl<'lex> Lexer<'lex> {
 		}
 	}
 
-	fn move_point(&mut self, value: &'lex str) {
+	fn move_point(&mut self, value: &str) {
 		for ele in value.chars() {
 			if ele == '\n' {
 				self.curr_point.line += 1;
@@ -130,33 +134,33 @@ impl<'lex> Lexer<'lex> {
 	}
 
 	#[must_use]
-	fn peek(&self) -> Option<&'lex str> {
-		self.graphemes.get(self.curr_point.segment_idx).copied()
+	fn peek(&self) -> Option<String> {
+		self.graphemes.get(self.curr_point.segment_idx).cloned()
 	}
 
-	fn pop(&mut self) -> Option<&'lex str> {
-		let popped = self.graphemes.get(self.curr_point.segment_idx).copied()?;
-		self.move_point(popped);
+	fn pop(&mut self) -> Option<String> {
+		let popped = self.graphemes.get(self.curr_point.segment_idx).cloned()?;
+		self.move_point(&popped);
 		Some(popped)
 	}
 
-	fn pop_if(&mut self, predicate: impl Fn(&str) -> bool) -> Option<&'lex str> {
-		let popped = self.graphemes.get(self.curr_point.segment_idx).copied()?;
-		if !predicate(popped) {
+	fn pop_if(&mut self, predicate: impl Fn(&String) -> bool) -> Option<String> {
+		let popped = self.graphemes.get(self.curr_point.segment_idx).cloned()?;
+		if !predicate(&popped) {
 			return None;
 		}
-		self.move_point(popped);
+		self.move_point(&popped);
 		Some(popped)
 	}
 
-	fn pop_if_all(&mut self, predicate: impl Fn(char) -> bool) -> Option<&'lex str> {
-		let popped = self.graphemes.get(self.curr_point.segment_idx).copied()?;
+	fn pop_if_all(&mut self, predicate: impl Fn(char) -> bool) -> Option<String> {
+		let popped = self.graphemes.get(self.curr_point.segment_idx).cloned()?;
 		for ele in popped.chars() {
 			if !predicate(ele) {
 				return None;
 			}
 		}
-		self.move_point(popped);
+		self.move_point(&popped);
 		Some(popped)
 	}
 
@@ -183,15 +187,15 @@ impl<'lex> Lexer<'lex> {
 		v.is_ascii_alphanumeric() || v == '_'
 	}
 
-	fn pop_ident(&mut self, start: Option<&'lex str>) -> Option<String> {
+	fn pop_ident(&mut self, start: Option<&str>) -> Option<String> {
 		let mut ident = String::new();
 		if let Some(start) = start {
 			ident.push_str(start);
 		} else {
-			ident.push_str(self.pop()?);
+			ident.push_str(&self.pop()?);
 		}
 		while let Some(v) = self.pop_if_all(Self::is_ident_chr_rest) {
-			ident.push_str(v);
+			ident.push_str(&v);
 		}
 
 		Some(ident)
@@ -207,11 +211,11 @@ impl<'lex> Lexer<'lex> {
 				break;
 			};
 
-			match c {
+			match c.as_str() {
 				"#" => {
 					let mut comment = String::new();
 					while let Some(v) = self.pop_if(|c| !c.ends_with('\n')) {
-						comment.push_str(v);
+						comment.push_str(&v);
 					}
 
 					if comment.starts_with(' ') {
@@ -231,6 +235,7 @@ impl<'lex> Lexer<'lex> {
 				"-" if self.pop_if(|v| v == ">").is_some() => self.add(Token::Arrow, &start),
 				"@" if matches!(self.peek(), Some(v) if v.chars().all(Self::is_ident_chr_first)) => {
 					let ident = self.pop_ident(None).ok_or(OlympusError::error(
+						self.source.clone(),
 						"Couldn't pop ident after finding it, this shouldn't ever happen.",
 						self.get_span(&start),
 					))?;
@@ -258,11 +263,18 @@ impl<'lex> Lexer<'lex> {
 						"array" => self.add(TypeToken::Array, &start),
 						"option" => self.add(TypeToken::Option, &start),
 
-						_ => return Err(OlympusError::error("Unrecognized builtin", self.get_span(&start))),
+						_ => {
+							return Err(OlympusError::error(
+								self.source.clone(),
+								"Unrecognized builtin",
+								self.get_span(&start),
+							))
+						}
 					}
 				}
 				c if c.chars().all(Self::is_ident_chr_first) => {
 					let ident = self.pop_ident(Some(c)).ok_or(OlympusError::error(
+						self.source.clone(),
 						"Couldn't pop ident after finding it, this shouldn't ever happen.",
 						self.get_span(&start),
 					))?;
@@ -280,16 +292,18 @@ impl<'lex> Lexer<'lex> {
 				c if c.chars().all(char::is_numeric) => {
 					let mut number = c.to_string();
 					while let Some(v) = self.pop_if_all(char::is_numeric) {
-						number.push_str(v);
+						number.push_str(&v);
 					}
 
+					let source = self.source.clone().clone();
 					let number = number.parse::<i16>().map_err(|_| {
-						OlympusError::error(&format!("Max enum tag is {}", i16::MAX), self.get_span(&start))
+						OlympusError::error(source, &format!("Max enum tag is {}", i16::MAX), self.get_span(&start))
 					})?;
 					self.add(Token::Number(number), &start);
 				}
 				_ => {
 					return Err(OlympusError::error(
+						self.source.clone().clone(),
 						&format!("Unexpected character: {c}"),
 						self.get_span(&start),
 					))
