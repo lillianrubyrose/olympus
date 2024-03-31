@@ -1,0 +1,9 @@
+name: Actions K8S Test
+on:
+  workflow_dispatch:
+
+jobs:
+  Test:
+    runs-on: olympus-runner-set
+    steps:
+    - run: echo "🎉 yipee 🎉"
