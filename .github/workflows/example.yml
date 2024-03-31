@@ -8,3 +8,6 @@ jobs:
     runs-on: olympus-runner-set
     steps:
     - run: echo "🎉 yipee 🎉"
+    - run: echo $(uname -a)
+    - run: echo $(which apt)
+    - run: echo $(which snap)
