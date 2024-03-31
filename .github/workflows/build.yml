@@ -1,10 +1,9 @@
-name: Actions K8S Test
+name: build
 on:
-  workflow_dispatch:
   push:
 
 jobs:
-  Test:
+  build-and-test:
     runs-on: olympus-runner-set
     steps:
       - run: sudo apt update && sudo apt install -yyqq curl clang
