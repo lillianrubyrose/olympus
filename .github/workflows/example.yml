@@ -7,7 +7,7 @@ jobs:
   Test:
     runs-on: olympus-runner-set
     steps:
-      - run: apt update && apt install -yyqq curl clang
+      - run: sudo apt update && sudo apt install -yyqq curl clang
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo build --all
