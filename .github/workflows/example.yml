@@ -1,6 +1,7 @@
 name: Actions K8S Test
 on:
   workflow_dispatch:
+  push:
 
 jobs:
   Test:
